@@ -1,6 +1,6 @@
-const { ethers } = require("hardhat");
 const fs = require("fs");
 const path = require("path");
+const { ethers } = require("hardhat");
 
 async function main() {
   console.log("🚀 Avvio deploy completo...");
@@ -8,47 +8,56 @@ async function main() {
   const [deployer] = await ethers.getSigners();
   console.log("👤 Deployer:", deployer.address);
 
-  // === Deploy MockToken ===
-  const MockToken = await ethers.getContractFactory("MockToken");
-  const token = await MockToken.deploy(ethers.parseEther("1000000")); // 1 milione MCK
-  await token.waitForDeployment();
-  console.log("🪙 MockToken:", await token.getAddress());
+  // === 1. Deploy MockToken ===
+  const Token = await ethers.getContractFactory("MockToken");
+  const mockToken = await Token.deploy(ethers.parseEther("1000000"));
+  await mockToken.waitForDeployment();
+  console.log("🪙 MockToken:", await mockToken.getAddress());
 
-  // === Deploy PriceConsumerV3 ===
+  // === 2. Deploy PriceConsumerV3 ===
   const PriceConsumer = await ethers.getContractFactory("PriceConsumerV3");
-  const consumer = await PriceConsumer.deploy();
-  await consumer.waitForDeployment();
-  console.log("📈 PriceConsumerV3:", await consumer.getAddress());
+  const priceConsumer = await PriceConsumer.deploy();
+  await priceConsumer.waitForDeployment();
+  console.log("📈 PriceConsumerV3:", await priceConsumer.getAddress());
 
-  // === Deploy WalletFactory ===
+  // === 3. Deploy WalletFactory ===
   const Factory = await ethers.getContractFactory("WalletFactory");
-  const factory = await Factory.deploy(); // ✅ nessun parametro
-  await factory.waitForDeployment();
-  console.log("🏭 WalletFactory:", await factory.getAddress());
+  const walletFactory = await Factory.deploy();
+  await walletFactory.waitForDeployment();
+  console.log("🏭 WalletFactory:", await walletFactory.getAddress());
 
-  // === Salva ABI + indirizzi nel frontend ===
-  const frontendDir = path.join(__dirname, "../frontend/src/abi");
-  if (!fs.existsSync(frontendDir)) fs.mkdirSync(frontendDir, { recursive: true });
+  // === 4. Salva ABI e indirizzi nel frontend ===
+  const backendAbiPath = path.join(__dirname, "../artifacts/contracts");
+  const frontendAbiPath = path.join(__dirname, "../../frontend/src/abi");
+  if (!fs.existsSync(frontendAbiPath)) fs.mkdirSync(frontendAbiPath, { recursive: true });
 
-  const addresses = {
-    MockToken: await token.getAddress(),
-    PriceConsumerV3: await consumer.getAddress(),
-    WalletFactory: await factory.getAddress(),
-  };
-  fs.writeFileSync(`${frontendDir}/contract-address.json`, JSON.stringify(addresses, null, 2));
-
-  const artifactNames = ["MockToken", "PriceConsumerV3", "WalletFactory"];
-  for (const name of artifactNames) {
-    const artifact = require(`../artifacts/contracts/${name}.sol/${name}.json`);
-    fs.writeFileSync(`${frontendDir}/${name}.json`, JSON.stringify(artifact, null, 2));
+  // Copia i file ABI principali
+  const contracts = ["WalletFactory", "MockToken", "PriceConsumerV3"];
+  for (const name of contracts) {
+    const filePath = path.join(backendAbiPath, `${name}.sol/${name}.json`);
+    if (fs.existsSync(filePath)) {
+      fs.copyFileSync(filePath, path.join(frontendAbiPath, `${name}.json`));
+    }
   }
 
-  console.log("✅ ABI & indirizzi salvati in:", frontendDir);
+  // Crea il file degli indirizzi
+  const addresses = {
+    WalletFactory: await walletFactory.getAddress(),
+    MockToken: await mockToken.getAddress(),
+    PriceConsumerV3: await priceConsumer.getAddress(),
+  };
+
+  fs.writeFileSync(
+    path.join(frontendAbiPath, "addresses.json"),
+    JSON.stringify(addresses, null, 2)
+  );
+
+  console.log("✅ ABI & indirizzi copiati in frontend/src/abi/");
   console.log("🎉 Deploy completato!");
 }
 
 main().catch((error) => {
   console.error(error);
-  process.exitCode = 1;
+  process.exit(1);
 });
 
