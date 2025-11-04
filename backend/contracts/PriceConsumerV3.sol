@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.7;
 
+// Interfaccia Chainlink
 interface AggregatorV3Interface {
+    function decimals() external view returns (uint8);
     function latestRoundData()
         external
         view
@@ -12,37 +14,28 @@ interface AggregatorV3Interface {
             uint256 updatedAt,
             uint80 answeredInRound
         );
-
-    function decimals() external view returns (uint8);
 }
 
 contract PriceConsumerV3 {
-    mapping(bytes32 => AggregatorV3Interface) public feeds;
-    address public owner;
+    AggregatorV3Interface public priceFeed;
 
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not owner");
-        _;
+    // Costruttore vuoto per i test locali — possiamo impostare manualmente il feed
+    constructor() {}
+
+    // ✅ Funzione per settare il feed (necessaria ai test e ai deploy personalizzati)
+    function setPriceFeed(address _feed) public {
+        priceFeed = AggregatorV3Interface(_feed);
     }
 
-    constructor() {
-        owner = msg.sender;
+    // ✅ Restituisce il prezzo corrente
+    function getLatestPrice() public view returns (int256) {
+        (, int256 price, , , ) = priceFeed.latestRoundData();
+        return price;
     }
 
-    function setFeed(string memory symbol, address feed) external onlyOwner {
-        feeds[keccak256(bytes(symbol))] = AggregatorV3Interface(feed);
-    }
-
-    function getPrice(string memory symbol)
-        external
-        view
-        returns (int256 price, uint8 decimals)
-    {
-        AggregatorV3Interface aggr = feeds[keccak256(bytes(symbol))];
-        require(address(aggr) != address(0), "Feed not set");
-        (, int256 answer,,,) = aggr.latestRoundData();
-        decimals = aggr.decimals();
-        return (answer, decimals);
+    // ✅ Restituisce il numero di decimali
+    function getDecimals() public view returns (uint8) {
+        return priceFeed.decimals();
     }
 }
 
