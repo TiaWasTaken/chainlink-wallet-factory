@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
+import WalletList from "../components/WalletList"; // se lo hai già
+import SendEth from "../components/SendEth";
 
 export default function Home() {
   const [account, setAccount] = useState(null);
+  const [activeWallet, setActiveWallet] = useState(null);
 
-  // ✅ Recupera l’account MetaMask se già connesso
+  // ✅ Recupera account MetaMask se già connesso
   useEffect(() => {
     async function loadAccount() {
       if (window.ethereum) {
@@ -13,11 +16,10 @@ export default function Home() {
           if (accounts.length > 0) {
             setAccount(accounts[0]);
           } else {
-            // Nessun account -> torna al login
             window.location.replace("/");
           }
-        } catch (err) {
-          console.error("Error loading account:", err);
+        } catch (e) {
+          console.error(e);
           window.location.replace("/");
         }
       } else {
@@ -46,7 +48,7 @@ export default function Home() {
     };
   }, []);
 
-  // 🧭 Logout manuale (pulsante extra)
+  // 🧭 Logout manuale
   function disconnectWallet() {
     try {
       setAccount(null);
@@ -72,11 +74,11 @@ export default function Home() {
           You’re connected with your MetaMask wallet.
         </p>
 
-        <div className="w-[300px] h-[300px] rounded-2xl bg-gradient-to-br from-purple-400/10 to-indigo-400/10 flex items-center justify-center border border-purple-300/20">
-          <span className="text-purple-700 font-semibold">
-            Smart Contract Area (coming soon)
-          </span>
-        </div>
+        {/* Wallet section */}
+        <WalletList account={account} setActiveWallet={setActiveWallet} />
+
+        {/* Send ETH */}
+        <SendEth activeWallet={activeWallet} />
 
         {/* 🔴 Disconnect */}
         <button
