@@ -16,8 +16,10 @@
     "dotenv": "^17.2.3",
     "ethers": "^6.15.0",
     "maath": "^0.10.8",
+    "nextjs-routes": "^2.2.5",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-router-dom": "^7.9.5",
     "three": "^0.181.0"
   },
   "devDependencies": {
