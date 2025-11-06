@@ -1,10 +1,10 @@
-// src/components/Navbar.jsx
 import { useEffect, useState, useRef } from "react";
 import { ethers } from "ethers";
 import ethLogo from "../assets/eth_logo.png";
 
 export default function Navbar({ account, setAccount, variant = "home" }) {
   const [balance, setBalance] = useState(null);
+  const [prevBalance, setPrevBalance] = useState(null);
   const [avatar, setAvatar] = useState("");
   const [showMenu, setShowMenu] = useState(false);
   const dropdownRef = useRef(null);
@@ -18,19 +18,31 @@ export default function Navbar({ account, setAccount, variant = "home" }) {
     setAvatar(`/avatars/avatar${randomIndex}.png`);
   }, [account]);
 
-  // 💰 Aggiorna bilancio quando cambia account
+  // 💰 Aggiorna bilancio dinamicamente
   useEffect(() => {
+    if (!account || !window.ethereum) return;
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+
     async function loadBalance() {
-      if (account && window.ethereum) {
-        const provider = new ethers.BrowserProvider(window.ethereum);
+      try {
         const balanceWei = await provider.getBalance(account);
-        setBalance(Number(ethers.formatEther(balanceWei)));
+        const newBalance = Number(ethers.formatEther(balanceWei));
+        setPrevBalance(balance); // salva quello vecchio per l'animazione
+        setBalance(newBalance);
+      } catch (err) {
+        console.error("Error fetching balance:", err);
       }
     }
-    loadBalance();
+
+    loadBalance(); // immediato al mount
+
+    // ⏱️ aggiorna ogni 3 secondi
+    const interval = setInterval(loadBalance, 3000);
+    return () => clearInterval(interval);
   }, [account]);
 
-  // 🔒 Chiudi il menu cliccando fuori
+  // 🔒 Chiudi menu cliccando fuori
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -50,8 +62,6 @@ export default function Navbar({ account, setAccount, variant = "home" }) {
       sessionStorage.clear();
 
       console.log("🧹 Disconnected & cache cleared");
-
-      // Reindirizza forzatamente
       window.location.href = "/";
     } catch (e) {
       console.error("❌ Disconnect error:", e);
@@ -64,13 +74,18 @@ export default function Navbar({ account, setAccount, variant = "home" }) {
     if (variant === "home" && account) window.location.href = "/home";
   };
 
+  // 💫 Calcola animazione del bilancio
+  const balanceChanged =
+    prevBalance !== null && balance !== null && prevBalance !== balance;
+
   return (
     <nav className="w-full flex justify-between items-center px-8 py-4 border-b border-gray-200 backdrop-blur-md bg-white/60 shadow-sm fixed top-0 left-0 z-50">
       {/* Logo + nome */}
       <div
         onClick={handleLogoClick}
-        className={`flex items-center gap-3 select-none ${variant === "home" ? "cursor-pointer" : "cursor-default"
-          }`}
+        className={`flex items-center gap-3 select-none ${
+          variant === "home" ? "cursor-pointer" : "cursor-default"
+        }`}
       >
         <img
           src={ethLogo}
@@ -85,9 +100,17 @@ export default function Navbar({ account, setAccount, variant = "home" }) {
       {/* Account info */}
       {variant === "home" && account && (
         <div className="flex items-center gap-5" ref={dropdownRef}>
-          {/* Balance */}
-          <div className="text-sm text-gray-700 font-medium">
-            Ξ {balance ? balance.toFixed(4) : "0.0000"} ETH
+          {/* 💰 Balance */}
+          <div
+            className={`text-sm font-medium flex items-center gap-1 ${
+              balanceChanged ? "text-purple-600 transition-colors" : "text-gray-700"
+            }`}
+          >
+            Ξ{" "}
+            {balance !== null
+              ? balance.toFixed(4)
+              : "0.0000"}{" "}
+            ETH
           </div>
 
           {/* Avatar + menu */}

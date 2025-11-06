@@ -8,8 +8,9 @@ export default function WalletList({ account, setActiveWallet }) {
   const [balances, setBalances] = useState({});
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
 
-  // 🧠 Carica tutti i wallet associati all'account
+  // 🧠 Carica i wallet dell'account
   useEffect(() => {
     async function fetchWallets() {
       if (!account || !window.ethereum) return;
@@ -25,7 +26,7 @@ export default function WalletList({ account, setActiveWallet }) {
         const result = await contract.getUserWallets(account);
         setWallets(result);
 
-        // ⚡ Per ogni wallet, recupera il balance
+        // ⚡ Recupera bilanci
         const balancesTemp = {};
         for (const addr of result) {
           const balanceWei = await provider.getBalance(addr);
@@ -41,29 +42,77 @@ export default function WalletList({ account, setActiveWallet }) {
     fetchWallets();
   }, [account]);
 
-  // 🧩 Aggiorna il balance in tempo reale (ogni 10 secondi)
+  // 🔁 Aggiorna bilanci ogni 10s
   useEffect(() => {
     if (!wallets.length) return;
     const interval = setInterval(async () => {
       const provider = new ethers.BrowserProvider(window.ethereum);
-      const updatedBalances = {};
+      const updated = {};
       for (const addr of wallets) {
         const bal = await provider.getBalance(addr);
-        updatedBalances[addr] = ethers.formatEther(bal);
+        updated[addr] = ethers.formatEther(bal);
       }
-      setBalances(updatedBalances);
-    }, 10000);
+      setBalances(updated);
+    }, 3000);
     return () => clearInterval(interval);
   }, [wallets]);
 
+  // 🏗️ Crea un nuovo wallet
+  async function createWallet() {
+    if (!account || !window.ethereum) return;
+    try {
+      setCreating(true);
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(
+        WALLET_FACTORY_ADDRESS,
+        walletFactoryABI.abi,
+        signer
+      );
+
+      console.log("🚀 Creating new wallet...");
+      const tx = await contract.createWallet();
+      await tx.wait();
+
+      console.log("✅ Wallet created! Reloading...");
+      // Ricarica i wallet dopo la creazione
+      const updatedWallets = await contract.getUserWallets(account);
+      setWallets(updatedWallets);
+    } catch (err) {
+      console.error("Error creating wallet:", err);
+    } finally {
+      setCreating(false);
+    }
+  }
+
   return (
-    <div className="flex flex-col items-center mt-10">
-      <h3 className="text-2xl font-semibold mb-6 text-gray-800">
-        Your Smart Wallets
-      </h3>
+    <div className="flex flex-col items-center mt-10 w-full">
+      {/* Header */}
+      <div className="flex justify-between w-full max-w-4xl items-center mb-6">
+        <h3 className="text-2xl font-semibold text-gray-800">
+          Your Smart Wallets
+        </h3>
 
-      {loading && <p className="text-gray-500 mb-4">Loading wallets...</p>}
+        {/* Pulsante crea wallet */}
+        <button
+          onClick={createWallet}
+          disabled={creating}
+          className={`px-5 py-2 rounded-lg font-semibold text-white shadow-sm transition-all duration-200 ${
+            creating
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-gradient-to-r from-purple-500 to-indigo-600 hover:scale-105"
+          }`}
+        >
+          {creating ? "Creating..." : "+ Create Wallet"}
+        </button>
+      </div>
 
+      {/* Stato di caricamento */}
+      {loading && (
+        <p className="text-gray-500 mb-4 animate-pulse">Loading wallets...</p>
+      )}
+
+      {/* Lista dei wallet */}
       <div className="flex flex-wrap gap-6 justify-center">
         {wallets.map((wallet) => (
           <div
@@ -91,6 +140,7 @@ export default function WalletList({ account, setActiveWallet }) {
         ))}
       </div>
 
+      {/* Wallet attivo */}
       {selectedWallet && (
         <p className="mt-6 text-sm text-green-600 font-medium">
           ✅ Active wallet: {selectedWallet}
