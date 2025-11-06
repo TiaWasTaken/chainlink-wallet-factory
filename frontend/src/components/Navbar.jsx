@@ -9,12 +9,14 @@ export default function Navbar({ account, setAccount, variant = "home" }) {
   const [showMenu, setShowMenu] = useState(false);
   const dropdownRef = useRef(null);
 
-  // 🎲 Avatar casuale
+  // 🎲 Avatar casuale → si aggiorna ogni volta che cambia account
   useEffect(() => {
+    if (!account) return;
+
     const totalAvatars = 5;
     const randomIndex = Math.floor(Math.random() * totalAvatars) + 1;
     setAvatar(`/avatars/avatar${randomIndex}.png`);
-  }, []);
+  }, [account]);
 
   // 💰 Aggiorna bilancio quando cambia account
   useEffect(() => {
@@ -67,9 +69,8 @@ export default function Navbar({ account, setAccount, variant = "home" }) {
       {/* Logo + nome */}
       <div
         onClick={handleLogoClick}
-        className={`flex items-center gap-3 select-none ${
-          variant === "home" ? "cursor-pointer" : "cursor-default"
-        }`}
+        className={`flex items-center gap-3 select-none ${variant === "home" ? "cursor-pointer" : "cursor-default"
+          }`}
       >
         <img
           src={ethLogo}
