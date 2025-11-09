@@ -5,7 +5,11 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      backgroundImage: {
+        "hero-pattern": "url('/herobg.png')", // ✅ percorso corretto perché il file è in /public
+      },
+    },
   },
   plugins: [],
 }

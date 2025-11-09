@@ -1,17 +1,20 @@
-import { useState, useEffect } from "react";
+// src/pages/Home.jsx
+import React, { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
-import WalletList from "../components/WalletList";
-import SendEth from "../components/SendEth";
+import Hero from "../components/Hero";
+import InfoCards from "../components/InfoCards";
+import BallSection from "../components/BallSection";
 
 export default function Home() {
   const [account, setAccount] = useState(null);
-  const [activeWallet, setActiveWallet] = useState(null);
 
   useEffect(() => {
     async function loadAccount() {
       if (window.ethereum) {
         try {
-          const accounts = await window.ethereum.request({ method: "eth_accounts" });
+          const accounts = await window.ethereum.request({
+            method: "eth_accounts",
+          });
           if (accounts.length > 0) {
             setAccount(accounts[0]);
           } else {
@@ -59,42 +62,28 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 flex flex-col text-gray-800 relative overflow-hidden">
+    <div className="min-h-screen bg-[#0f0f1a] text-gray-200 overflow-x-hidden">
+      {/* Navbar */}
       <Navbar variant="home" account={account} setAccount={setAccount} />
 
-      {/* 🌈 Background effects */}
-      <div className="absolute w-[600px] h-[600px] bg-purple-300/20 rounded-full blur-3xl top-1/3 -left-1/3" />
-      <div className="absolute w-[600px] h-[600px] bg-fuchsia-300/20 rounded-full blur-3xl bottom-1/3 -right-1/3" />
+      {/* Hero section */}
+      <Hero />
 
-      <main className="flex flex-col items-center justify-start flex-1 mt-28 px-6 z-10">
-        {/* Hero section */}
-        <div className="text-center mb-10">
-          <h2 className="text-4xl font-extrabold mb-2 bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
-            Welcome back 👋
-          </h2>
-          <p className="text-gray-600 text-lg">
-            You’re connected with your MetaMask wallet.
-          </p>
-        </div>
+      {/* Informative cards section */}
+      <InfoCards />
 
-        {/* Wallet list */}
-        <section className="w-full max-w-5xl flex flex-col items-center mb-12">
-          <WalletList account={account} setActiveWallet={setActiveWallet} />
-        </section>
+      {/* Interactive 3D balls section */}
+      <BallSection />
 
-        {/* Send ETH */}
-        <section className="w-full flex justify-center">
-          <SendEth activeWallet={activeWallet} />
-        </section>
-
-        {/* Disconnect */}
+      {/* Disconnect button (temporaneo) */}
+      <div className="flex justify-center py-10">
         <button
           onClick={disconnectWallet}
-          className="mt-14 mb-8 px-6 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-semibold rounded-lg shadow-sm hover:scale-105 transition-transform duration-200"
+          className="px-6 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-semibold rounded-lg shadow-sm hover:scale-105 transition-transform duration-200"
         >
           Disconnect
         </button>
-      </main>
+      </div>
     </div>
   );
 }

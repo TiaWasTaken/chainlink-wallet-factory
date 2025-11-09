@@ -1,3 +1,4 @@
+// src/canva/Computers.jsx
 import React, { Suspense, useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Preload, useGLTF } from "@react-three/drei";
@@ -7,7 +8,7 @@ const Computers = ({ isMobile }) => {
   const computer = useGLTF("/desktop_pc/scene.gltf");
 
   return (
-    <mesh>
+      <mesh>
       <ambientLight intensity={0.8} />
       <hemisphereLight intensity={0.15} groundColor='black' />
       <spotLight
@@ -41,35 +42,29 @@ const ComputersCanvas = () => {
     };
 
     mediaQuery.addListener(handleMediaQueryChange);
-    return () => {
-      mediaQuery.removeListener(handleMediaQueryChange);
-    };
+    return () => mediaQuery.removeListener(handleMediaQueryChange);
   }, []);
 
   return (
-    <>
-      {/* Canvas should not contain any divs or HTML elements */}
-      <Canvas
-        frameloop='demand'
-        shadows
-        dpr={[1, 2]}
-        camera={{ position: [20, 3, 5], fov: 25 }}
-        gl={{ preserveDrawingBuffer: true }}
-      >
-        <Suspense fallback={<CanvasLoader />}>
-          <OrbitControls
-            enableZoom={false}
-            maxPolarAngle={Math.PI}
-            minPolarAngle={0}
-          />
-          <Computers isMobile={isMobile} />
-        </Suspense>
+    <Canvas
+      frameloop="demand"
+      shadows
+      dpr={[1, 2]}
+      camera={{ position: [20, 2, 5], fov: 25 }} // ← camera più vicina
+      gl={{ preserveDrawingBuffer: true }}
+      style={{ height: "100vh", width: "100vw" }}
+    >
+      <Suspense fallback={<CanvasLoader />}>
+        <OrbitControls
+          enableZoom={false}
+          maxPolarAngle={Math.PI - 0.1}
+          minPolarAngle={0.1}
+        />
+        <Computers isMobile={isMobile} />
+      </Suspense>
 
-        <Preload all />
-      </Canvas>
-
-      {/* Place any HTML elements like div here, outside the Canvas */}
-    </>
+      <Preload all />
+    </Canvas>
   );
 };
 
