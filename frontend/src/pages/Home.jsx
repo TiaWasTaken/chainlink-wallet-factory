@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import Hero from "../components/Hero";
-import InfoCards from "../components/InfoCards";
 import BallSection from "../components/BallSection";
+import About from "../components/About";
 
 export default function Home() {
   const [account, setAccount] = useState(null);
@@ -69,8 +69,7 @@ export default function Home() {
       {/* Hero section */}
       <Hero />
 
-      {/* Informative cards section */}
-      <InfoCards />
+      <About />
 
       {/* Interactive 3D balls section */}
       <BallSection />
