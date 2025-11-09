@@ -30,8 +30,8 @@ const Hero = () => {
             className={`${styles.heroSubText} mt-2 text-white-100 text-[16px]`}
           >
             Powered by <span className="text-[#915eff]">Ethereum </span> 
-             and <br /> built for{" "}
-            <span className="text-[#915eff]">Connection</span>.
+            <br />Built for{" "}
+            <span className="text-[#915eff]">Connection</span>
           </p>
 
           {/* Socials */}

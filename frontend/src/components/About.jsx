@@ -146,7 +146,6 @@ const EthPrice = () => {
   );
 };
 
-// 🧩 Sezione About
 const About = () => {
   return (
     <section
@@ -157,8 +156,8 @@ const About = () => {
         {/* --- Testo --- */}
         <div>
           <motion.div variants={textVariant()}>
-            <p className={styles.sectionSubText}>Introduction</p>
-            <h2 className={styles.sectionHeadText}>This is EtherConnect.</h2>
+            <p className={styles.sectionSubText}><span className="text-[#915eff]">Introduction</span></p>
+            <h2 className={styles.sectionHeadText}>This is <span className="text-[#915eff]">Ether</span>Connect.</h2>
           </motion.div>
 
           <motion.p
@@ -167,9 +166,9 @@ const About = () => {
           >
             A decentralized hub built on{" "}
             <span className="text-[#915eff] font-semibold">Ethereum</span>,
-            connecting users, smart contracts, and dApps through secure and
-            transparent interactions. Empowering developers and individuals to
-            build the future of the blockchain ecosystem.
+            connecting users and wallets through secure and
+            transparent interactions. <span className="text-[#915eff] font-semibold">Ether</span>Connect allows individuals to
+            experience the future of <span className="text-[#915eff] font-semibold">swaps and transactions</span> with Ethereum.
           </motion.p>
         </div>
 
