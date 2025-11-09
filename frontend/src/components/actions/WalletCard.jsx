@@ -1,6 +1,7 @@
-// src/components/WalletCard.jsx
+// src/components/actions/WalletCard.jsx
 import { useEffect, useState } from "react";
 import { ethers } from "ethers";
+import { motion } from "framer-motion";
 
 export default function WalletCard({ walletAddress, isActive, onSelect }) {
   const [balance, setBalance] = useState("0.0");
@@ -20,15 +21,28 @@ export default function WalletCard({ walletAddress, isActive, onSelect }) {
   }, [walletAddress]);
 
   return (
-    <div
+    <motion.div
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.97 }}
       onClick={() => onSelect(walletAddress)}
-      className={`cursor-pointer border rounded-xl p-4 flex flex-col items-center justify-center transition-all duration-200 ${
-        isActive ? "bg-purple-100 border-purple-400" : "bg-white hover:bg-gray-100"
+      className={`relative cursor-pointer p-5 rounded-2xl border transition-all duration-300 text-center backdrop-blur-sm ${
+        isActive
+          ? "bg-gradient-to-b from-[#6b3aff]/70 to-[#915eff]/70 border-[#915eff] shadow-[0_0_25px_rgba(145,94,255,0.4)]"
+          : "bg-[#151520]/80 border-[#2b2b3d] hover:border-[#915eff]/40 hover:shadow-[0_0_20px_rgba(145,94,255,0.2)]"
       }`}
     >
-      <span className="font-mono text-xs break-all text-gray-700">{walletAddress}</span>
-      <span className="text-sm text-gray-500 mt-2">{balance} ETH</span>
-    </div>
+      <p className="text-xs font-mono break-all text-gray-300 mb-2">
+        {walletAddress}
+      </p>
+      <p className="text-lg font-semibold text-white">{balance} ETH</p>
+
+      {isActive && (
+        <motion.div
+          layoutId="activeGlow"
+          className="absolute inset-0 rounded-2xl border-2 border-[#b191ff]/60 shadow-[0_0_30px_rgba(145,94,255,0.3)] pointer-events-none"
+        />
+      )}
+    </motion.div>
   );
 }
 

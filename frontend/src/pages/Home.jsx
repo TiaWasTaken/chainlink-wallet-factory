@@ -61,6 +61,24 @@ export default function Home() {
     }
   }
 
+  {/* Global toast system */ }
+  <div
+    id="toast"
+    className="fixed top-6 right-6 z-50 px-4 py-2 bg-[#151520]/80 text-gray-100 rounded-lg shadow-lg border border-[#2b2b3d] opacity-0 transition-opacity duration-500"
+  ></div>
+
+  useEffect(() => {
+    const el = document.getElementById("toast");
+    const handler = (e) => {
+      el.textContent = e.detail;
+      el.style.opacity = "1";
+      setTimeout(() => (el.style.opacity = "0"), 2500);
+    };
+    window.addEventListener("toast", handler);
+    return () => window.removeEventListener("toast", handler);
+  }, []);
+
+
   return (
     <div className="min-h-screen bg-[#0f0f1a] text-gray-200 overflow-x-hidden">
       {/* Navbar */}
