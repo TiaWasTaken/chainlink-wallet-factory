@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import Hero from "../components/Hero";
-import BallSection from "../components/BallSection";
 import About from "../components/About";
+import EtherMenu from "../components/EtherMenu";
 
 export default function Home() {
   const [account, setAccount] = useState(null);
@@ -71,8 +71,7 @@ export default function Home() {
 
       <About />
 
-      {/* Interactive 3D balls section */}
-      <BallSection />
+      <EtherMenu />
 
       {/* Disconnect button (temporaneo) */}
       <div className="flex justify-center py-10">

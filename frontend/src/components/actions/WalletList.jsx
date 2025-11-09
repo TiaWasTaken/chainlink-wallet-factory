@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { ethers } from "ethers";
-import walletFactoryABI from "../abi/WalletFactory.json";
-import { WALLET_FACTORY_ADDRESS } from "../config";
+import walletFactoryABI from "../../abi/WalletFactory.json";
+import { WALLET_FACTORY_ADDRESS } from "../../config";
+
 
 export default function WalletList({ account, setActiveWallet }) {
   const [wallets, setWallets] = useState([]);
