@@ -24,14 +24,14 @@ const Hero = () => {
         {/* Text content */}
         <div className="z-50 mt-6">
           <h1 className={`${styles.heroHeadText} text-white`}>
-            Hi, I'm <span className="text-[#915eff]">Mattia</span>
+            This is <span className="text-[#915eff]">Ether</span>Connect
           </h1>
           <p
             className={`${styles.heroSubText} mt-2 text-white-100 text-[16px]`}
           >
-            I'm a <span className="text-[#915eff]">20 years old</span> web
-            developer, <br className="sm:block hidden" /> based in{" "}
-            <span className="text-[#915eff]">Italy</span>.
+            Powered by <span className="text-[#915eff]">Ethereum </span> 
+             and <br /> built for{" "}
+            <span className="text-[#915eff]">Connection</span>.
           </p>
 
           {/* Socials */}
