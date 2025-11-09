@@ -89,7 +89,7 @@ export default function Home() {
 
       <About />
 
-      <EtherMenu />
+      <EtherMenu account={account} />
 
       {/* Disconnect button (temporaneo) */}
       <div className="flex justify-center py-10">
