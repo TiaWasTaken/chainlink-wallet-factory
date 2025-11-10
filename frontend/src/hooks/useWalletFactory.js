@@ -15,19 +15,31 @@ export default function useWalletFactory(account) {
   const balanceTimerRef = useRef(null);
   const eventsAttachedRef = useRef(false);
 
-  // 🔗 Ensure contract is ready
+  // 🔗 Ensure contract is ready (auto-reset when account changes)
   const ensureContract = useCallback(async () => {
     if (!window.ethereum) throw new Error("MetaMask not found");
-    if (!providerRef.current) {
-      providerRef.current = new ethers.BrowserProvider(window.ethereum);
-      signerRef.current = await providerRef.current.getSigner();
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    const address = await signer.getAddress();
+
+    // 🔁 Recreate instances if account changed or contract not set
+    if (
+      !providerRef.current ||
+      !signerRef.current ||
+      !contractRef.current ||
+      signerRef.current.address !== address
+    ) {
+      providerRef.current = provider;
+      signerRef.current = signer;
       contractRef.current = new ethers.Contract(
         WALLET_FACTORY_ADDRESS,
         factoryAbi.abi,
-        signerRef.current
+        signer
       );
-      console.log("📜 WalletFactory =", WALLET_FACTORY_ADDRESS);
+      console.log("📜 WalletFactory reinitialized for:", address);
     }
+
     return contractRef.current;
   }, []);
 
@@ -102,7 +114,7 @@ export default function useWalletFactory(account) {
       if (!mounted) return;
       await fetchBalances(list);
 
-      // Update balances every 5s
+      // Update balances every 3s
       balanceTimerRef.current && clearInterval(balanceTimerRef.current);
       balanceTimerRef.current = setInterval(() => {
         fetchBalances(list);

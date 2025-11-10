@@ -9,11 +9,10 @@ function formatEth(n) {
 }
 
 export default function WalletList({ account, setActiveWallet }) {
-  const { wallets, balances, isLoading, createWallet, refresh } = useWalletFactory(account);
+  const { wallets, balances, isLoading, createWallet } = useWalletFactory(account);
   const [selectedWallet, setSelectedWallet] = useState(null);
 
   const hasWallets = useMemo(() => wallets && wallets.length > 0, [wallets]);
-
   console.log("🧱 Wallets to display:", wallets);
 
   return (
@@ -25,34 +24,27 @@ export default function WalletList({ account, setActiveWallet }) {
     >
       {/* Header */}
       <div className="flex justify-between w-full items-center mb-8">
-        <h3 className="text-2xl font-semibold text-white tracking-tight">Your Smart Wallets</h3>
+        <h3 className="text-2xl font-semibold text-white tracking-tight">
+          Your Smart Wallets
+        </h3>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={refresh}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-white/90 border border-[#2b2b3d] bg-[#151520] hover:bg-[#1e1e2b] transition-all"
-          >
-            Refresh
-          </button>
-          <button
-            onClick={createWallet}
-            disabled={isLoading}
-            className={`px-6 py-2 rounded-lg font-semibold text-white shadow-sm transition-all duration-300 ${
-              isLoading
-                ? "bg-gray-500 cursor-not-allowed"
-                : "bg-gradient-to-r from-purple-500 to-indigo-600 hover:scale-105"
-            }`}
-          >
-            {isLoading ? "Creating..." : "+ Create Wallet"}
-          </button>
-        </div>
+        <button
+          onClick={createWallet}
+          disabled={isLoading}
+          className={`px-6 py-2 rounded-lg font-semibold text-white shadow-sm transition-all duration-300 ${
+            isLoading
+              ? "bg-gray-500 cursor-not-allowed"
+              : "bg-gradient-to-r from-purple-500 to-indigo-600 hover:scale-105"
+          }`}
+        >
+          {isLoading ? "Creating..." : "+ Create Wallet"}
+        </button>
       </div>
 
       {/* Stato */}
-      {isLoading && <p className="text-gray-400 mb-6 animate-pulse">Working on it…</p>}
-
-      {/* Debug */}
-      <p className="text-gray-400 text-sm mb-2">Found {wallets.length} wallets.</p>
+      {isLoading && (
+        <p className="text-gray-400 mb-6 animate-pulse">Working on it…</p>
+      )}
 
       {/* Lista */}
       {hasWallets ? (
@@ -75,7 +67,9 @@ export default function WalletList({ account, setActiveWallet }) {
                     : "bg-[#151520]/80 border-[#2b2b3d] text-gray-300 hover:bg-[#1e1e2b]"
                 }`}
               >
-                <p className="text-xs font-mono break-all mb-2">{wallet}</p>
+                <p className="text-[10px] font-mono truncate w-full text-gray-300 mb-2">
+                  {wallet}
+                </p>
                 <p className="text-lg font-semibold">{bal} ETH</p>
               </motion.div>
             );
@@ -87,10 +81,6 @@ export default function WalletList({ account, setActiveWallet }) {
             No wallets found. Create one above to get started.
           </p>
         )
-      )}
-
-      {selectedWallet && (
-        <p className="mt-6 text-sm text-emerald-400 font-medium">✅ Active wallet: {selectedWallet}</p>
       )}
     </motion.div>
   );
