@@ -43,7 +43,7 @@ export default function EtherMenu({ account, setActiveWallet }) {
   const renderSection = () => {
     switch (selected) {
       case "wallets":
-        return <WalletList account={account} setActiveWallet={setActiveWallet} />;
+        return <WalletList currentAccount={account} setActiveWallet={setActiveWallet} />;
       case "send":
         return <SendEth account={account} />;
       default:

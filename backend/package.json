@@ -6,7 +6,9 @@
     "test": "npx hardhat test",
     "compile": "npx hardhat compile",
     "node": "npx hardhat node",
-    "deploy": "npx hardhat run scripts/deploy.js --network localhost"
+    "start-node": "npx hardhat node",
+    "deploy": "npx hardhat run scripts/deploy_all.js --network localhost",
+    "reset": "kill -9 $(lsof -t -i:8545) 2>/dev/null || true && rm -rf cache artifacts && echo '🧹 Cache cleared!' && npx hardhat node"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",
