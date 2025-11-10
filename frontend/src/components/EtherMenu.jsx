@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import WalletList from "./actions/WalletList";
 import SendEth from "./actions/SendEth";
+import GasTracker from "./actions/GasTracker";
 
 const SectionPlaceholder = ({ title }) => (
   <motion.div
@@ -46,6 +47,8 @@ export default function EtherMenu({ account, setActiveWallet }) {
         return <WalletList currentAccount={account} setActiveWallet={setActiveWallet} />;
       case "send":
         return <SendEth account={account} />;
+      case "gas":
+        return <GasTracker />;
       default:
         return (
           <SectionPlaceholder
