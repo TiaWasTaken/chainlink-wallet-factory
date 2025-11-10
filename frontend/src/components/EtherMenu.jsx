@@ -10,7 +10,7 @@ import {
   History,
 } from "lucide-react";
 import WalletList from "./actions/WalletList";
-import SendEth from "./SendEth";
+import SendEth from "./actions/SendEth";
 
 const SectionPlaceholder = ({ title }) => (
   <motion.div
@@ -45,7 +45,7 @@ export default function EtherMenu({ account, setActiveWallet }) {
       case "wallets":
         return <WalletList account={account} setActiveWallet={setActiveWallet} />;
       case "send":
-        return <SendEth />;
+        return <SendEth account={account} />;
       default:
         return (
           <SectionPlaceholder
@@ -96,8 +96,8 @@ export default function EtherMenu({ account, setActiveWallet }) {
                 : {}
             }
             className={`relative overflow-hidden flex flex-col items-center justify-center gap-2 w-36 h-28 rounded-xl transition-all duration-300 ${selected === item.id
-                ? "bg-gradient-to-b from-[#6b3aff]/80 to-[#915eff]/70 text-white shadow-[0_0_25px_rgba(145,94,255,0.4)]"
-                : "bg-[#1b1b2a]/80 hover:bg-[#252540]/80 text-gray-400"
+              ? "bg-gradient-to-b from-[#6b3aff]/80 to-[#915eff]/70 text-white shadow-[0_0_25px_rgba(145,94,255,0.4)]"
+              : "bg-[#1b1b2a]/80 hover:bg-[#252540]/80 text-gray-400"
               }`}
           >
             <motion.span
