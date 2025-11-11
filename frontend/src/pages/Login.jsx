@@ -1,12 +1,10 @@
 import { useState } from "react";
-import EthereumLogo from "../canva/EthereumLogo";
 import Navbar from "../components/Navbar";
 
 export default function Login() {
   const [account, setAccount] = useState(null);
   const [error, setError] = useState("");
 
-  // 🦊 Connect to MetaMask — always manual
   async function connectWallet() {
     if (typeof window === "undefined" || !window.ethereum) {
       setError("⚠️ Please install MetaMask to continue.");
@@ -14,11 +12,9 @@ export default function Login() {
     }
 
     try {
-      // 🧹 clear any cached connection data
       localStorage.clear();
       sessionStorage.clear();
 
-      // 🧠 force MetaMask to open the account selection window
       await window.ethereum.request({
         method: "wallet_requestPermissions",
         params: [{ eth_accounts: {} }],
@@ -36,7 +32,6 @@ export default function Login() {
       setAccount(accounts[0]);
       setError("");
 
-      // ✅ Redirect to /home after 1s
       setTimeout(() => {
         window.location.href = "/home";
       }, 1000);
@@ -47,59 +42,87 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 text-gray-900 relative overflow-hidden">
-      {/* 🧭 Navbar */}
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#0e001a] via-[#15002b] to-[#220044] text-gray-100 relative overflow-hidden">
       <Navbar variant="login" />
 
-      {/* 🔮 Background glow */}
-      <div className="absolute w-[600px] h-[600px] bg-purple-300/20 rounded-full blur-3xl top-1/3 -left-1/3" />
-      <div className="absolute w-[600px] h-[600px] bg-fuchsia-300/20 rounded-full blur-3xl bottom-1/3 -right-1/3" />
+      {/* Glow background */}
+      <div className="absolute w-[600px] h-[600px] bg-purple-400/20 rounded-full blur-3xl top-1/3 -left-1/3" />
+      <div className="absolute w-[600px] h-[600px] bg-fuchsia-400/20 rounded-full blur-3xl bottom-1/3 -right-1/3" />
 
-      {/* 💠 Ethereum 3D Logo */}
-      <div className="relative h-64 w-64 mb-10 mt-12 z-10">
-        <div className="absolute inset-0 blur-[80px] bg-purple-400/20 rounded-full" />
-        <EthereumLogo />
+      {/* ✅ Floating 2D Logo */}
+      <div className="relative mb-10 mt-10 animate-float select-none">
+        <img
+          src="/icons/eth_logo.png"
+          alt="Ethereum Logo"
+          className="w-52 h-52 drop-shadow-[0_0_30px_rgba(164,99,255,0.5)]"
+        />
       </div>
 
-      {/* 🏷️ Title */}
-      <h1 className="mt-8 text-5xl font-extrabold mb-3 text-gray-800 z-10">
-        Connect Your Account
+      {/* Title */}
+      <h1 className="text-5xl font-extrabold mb-3 text-white text-center">
+        Connect Your Wallet
       </h1>
 
-      {/* 📜 Subtitle */}
-      <p className="text-gray-600 mb-8 text-center max-w-md z-10">
-        Once you connect a{" "}
-        <span className="font-bold">MetaMask Account</span>, you’ll be redirected to the home page.
+      {/* Subtitle */}
+      <p className="text-gray-400 mb-8 text-center max-w-md">
+        Access your dashboard securely with{" "}
+        <span className="text-purple-400 font-semibold">MetaMask</span>.
+        Your gateway to the decentralized web.
       </p>
 
-      {/* 🦊 Connect button */}
+      {/* Button */}
       <button
         onClick={connectWallet}
-        className="relative group px-8 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-semibold rounded-xl shadow-md hover:shadow-purple-300/50 hover:scale-105 transition-transform duration-300 overflow-hidden z-10"
+        className="relative group flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-semibold rounded-xl shadow-md hover:shadow-purple-400/50 hover:scale-105 transition-transform duration-300 overflow-hidden"
       >
-        <span className="relative z-10">🦊 Connect MetaMask</span>
+        <img
+          src="/icons/metamask.svg"
+          alt="MetaMask Icon"
+          className="w-6 h-6 relative mr-2 -ml-2 z-10"
+        />
+        <span className="relative z-10">Connect MetaMask</span>
         <div className="absolute inset-0 bg-gradient-to-r from-pink-400 to-purple-600 opacity-0 group-hover:opacity-30 blur-lg transition-opacity duration-300" />
       </button>
 
+
       {/* ✅ Connection state */}
       {account && (
-        <p className="mt-6 text-sm text-green-600 font-medium z-10">
+        <p className="mt-6 text-sm text-green-400 font-medium">
           ✅ Connected: {account.slice(0, 6)}...{account.slice(-4)}
         </p>
       )}
 
       {/* ❌ Error state */}
       {error && (
-        <p className="mt-6 text-sm text-red-500 text-center max-w-xs z-10">
+        <p className="mt-6 text-sm text-red-400 text-center max-w-xs">
           {error}
         </p>
       )}
 
-      {/* 🧾 Footer */}
-      <p className="text-sm text-gray-500 mt-8 text-center max-w-md z-10 mb-6">
-        Problems with MetaMask? Make sure your local node (Hardhat) is running and the{" "}
-        <b>Hardhat Localhost</b> network is selected.
+      {/* Footer */}
+      <p className="text-sm text-gray-500 mt-8 text-center max-w-md mb-6">
+        Having issues? Ensure your{" "}
+        <span className="text-purple-400 font-medium">Hardhat node</span> is running and{" "}
+        <span className="text-purple-400 font-medium">Localhost</span> network is selected.
       </p>
+
+      {/* ✨ Keyframes for floating effect */}
+      <style jsx>{`
+        @keyframes float {
+          0% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-12px);
+          }
+          100% {
+            transform: translateY(0px);
+          }
+        }
+        .animate-float {
+          animation: float 4.5s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 }
