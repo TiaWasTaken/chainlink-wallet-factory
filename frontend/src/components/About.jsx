@@ -4,12 +4,16 @@ import { motion, useAnimation } from "framer-motion";
 import { styles } from "../styles";
 import { fadeIn, textVariant } from "../utils/motion";
 
+// 🧩 Icone da react-icons
+import { FaWallet, FaCubes, FaEthereum } from "react-icons/fa";
+import { SiChainlink } from "react-icons/si";
+
 // 💎 Servizi EtherConnect
 const services = [
-  { title: "Smart Wallets", icon: "/icons/wallet.png" },
-  { title: "dApp Integration", icon: "/icons/dapp.png" },
-  { title: "Chainlink Feeds", icon: "/icons/chainlink_placeholder.png" },
-  { title: "ETH Transfers", icon: "/icons/swap_placeholder.png" },
+  { title: "Smart Wallets", icon: <FaWallet size={48} color="white" /> },
+  { title: "dApp Integration", icon: <FaCubes size={48} color="white" /> },
+  { title: "Chainlink Feeds", icon: <SiChainlink size={48} color="white" /> },
+  { title: "ETH Transfers", icon: <FaEthereum size={48} color="white" /> },
 ];
 
 // 💫 Card effetto Tilt + bordo neon
@@ -19,8 +23,8 @@ const ServiceCard = ({ index, title, icon }) => (
       variants={fadeIn("right", "spring", 0.2 * index, 0.75)}
       className="bg-gradient-to-r from-[#6b3aff] via-[#915eff] to-[#6b3aff] p-[2px] rounded-[20px] shadow-[0_0_25px_rgba(145,94,255,0.3)] hover:shadow-[0_0_40px_rgba(145,94,255,0.5)] transition-all duration-300"
     >
-      <div className="bg-[#151520] rounded-[20px] py-7 px-10 min-h-[280px] flex justify-evenly items-center flex-col">
-        <img src={icon} alt={title} className="w-16 h-16 object-contain" />
+      <div className="bg-[#0b0b16] rounded-[20px] py-7 px-10 min-h-[280px] flex justify-evenly items-center flex-col">
+        <div className="text-white">{icon}</div>
         <h3 className="text-white text-[20px] font-bold text-center mt-3">
           {title}
         </h3>
@@ -40,14 +44,12 @@ const EthPrice = () => {
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [vel, setVel] = useState({ x: 1.2, y: 1 });
 
-  // 🎯 Movimento tipo logo DVD
   useEffect(() => {
     const moveLogo = () => {
       setPos((prev) => {
         if (!containerRef.current) return prev;
-
         const box = containerRef.current.getBoundingClientRect();
-        const size = 40; // dimensione logo ETH in px
+        const size = 40;
         let newX = prev.x + vel.x;
         let newY = prev.y + vel.y;
         let newVel = { ...vel };
@@ -62,11 +64,10 @@ const EthPrice = () => {
       });
     };
 
-    const interval = setInterval(moveLogo, 25); // ~60fps
+    const interval = setInterval(moveLogo, 25);
     return () => clearInterval(interval);
   }, [vel]);
 
-  // 💵 Fetch prezzo ETH live
   useEffect(() => {
     let lastPrice = null;
 
@@ -117,9 +118,8 @@ const EthPrice = () => {
           trend === "up" ? [0, 10, 0] : trend === "down" ? [0, -10, 0] : 0,
       }}
       transition={{ duration: 0.4 }}
-      className="flex flex-col items-center justify-center bg-[#151520]/80 backdrop-blur-md rounded-2xl w-60 h-60 mr-24 border border-[#2b2b3d] shadow-[0_0_25px_rgba(145,94,255,0.25)] relative overflow-hidden"
+      className="flex flex-col items-center justify-center bg-[#0b0b16]/80 backdrop-blur-md rounded-2xl w-60 h-60 mr-24 border border-[#2b2b3d] shadow-[0_0_25px_rgba(145,94,255,0.25)] relative overflow-hidden"
     >
-      {/* Logo ETH rimbalzante tipo DVD */}
       <motion.img
         src="/icons/eth_logo.png"
         alt="ETH"
@@ -150,14 +150,18 @@ const About = () => {
   return (
     <section
       id="about"
-      className="max-w-7xl mx-auto px-6 mt-32 pb-24 relative z-20"
+      className="max-w-7xl mx-auto px-6 mt-32 pb-24 relative z-20 bg-[#060816]"
     >
       <div className="flex flex-row justify-between items-center">
         {/* --- Testo --- */}
         <div>
           <motion.div variants={textVariant()}>
-            <p className={styles.sectionSubText}><span className="text-[#915eff]">Introduction</span></p>
-            <h2 className={styles.sectionHeadText}>This is <span className="text-[#915eff]">Ether</span>Connect.</h2>
+            <p className={styles.sectionSubText}>
+              <span className="text-[#915eff]">Introduction</span>
+            </p>
+            <h2 className={styles.sectionHeadText}>
+              This is <span className="text-[#915eff]">Ether</span>Connect.
+            </h2>
           </motion.div>
 
           <motion.p
@@ -166,9 +170,14 @@ const About = () => {
           >
             A decentralized hub built on{" "}
             <span className="text-[#915eff] font-semibold">Ethereum</span>,
-            connecting users and wallets through secure and
-            transparent interactions. <span className="text-[#915eff] font-semibold">Ether</span>Connect allows individuals to
-            experience the future of <span className="text-[#915eff] font-semibold">swaps and transactions</span> with Ethereum.
+            connecting users and wallets through secure and transparent
+            interactions.{" "}
+            <span className="text-[#915eff] font-semibold">Ether</span>Connect
+            allows individuals to experience the future of{" "}
+            <span className="text-[#915eff] font-semibold">
+              swaps and transactions
+            </span>{" "}
+            with Ethereum.
           </motion.p>
         </div>
 

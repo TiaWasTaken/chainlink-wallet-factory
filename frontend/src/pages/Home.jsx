@@ -80,7 +80,7 @@ export default function Home() {
 
 
   return (
-    <div className="min-h-screen bg-[#0f0f1a] text-gray-200 overflow-x-hidden">
+    <div className="min-h-screen bg-[#060816] text-gray-200 overflow-x-hidden">
       {/* Navbar */}
       <Navbar variant="home" account={account} setAccount={setAccount} />
 
