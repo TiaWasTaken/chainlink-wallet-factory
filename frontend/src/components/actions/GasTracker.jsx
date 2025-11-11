@@ -41,7 +41,7 @@ export default function GasTracker() {
             second: "2-digit",
           });
           const updated = [...prev, { time: label, value: gwei }];
-          return updated.slice(-30);
+          return updated.slice(-15);
         });
 
         calcTransactionCosts(gwei);
