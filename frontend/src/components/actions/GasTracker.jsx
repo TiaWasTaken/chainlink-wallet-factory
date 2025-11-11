@@ -146,13 +146,36 @@ export default function GasTracker() {
           return gradient;
         },
         pointRadius: 0,
+        pointHoverRadius: 0,
+        pointBackgroundColor: "#a855f7",
+        pointHoverBackgroundColor: "#c084fc",
       },
     ],
   };
 
+  // --- Chart.js Options ---
   const chartOptions = {
     animation: { duration: 800, easing: "easeInOutQuad" },
-    plugins: { legend: { display: false } },
+    interaction: {
+      intersect: false,
+      mode: "index", // tooltip segue il mouse
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        enabled: true,
+        backgroundColor: "rgba(15,15,25,0.9)",
+        titleColor: "#fff",
+        bodyColor: "#c084fc",
+        borderWidth: 1,
+        borderColor: "#a855f7",
+        cornerRadius: 6,
+        displayColors: false,
+        callbacks: {
+          label: (ctx) => `${ctx.parsed.y.toFixed(3)} Gwei`,
+        },
+      },
+    },
     scales: {
       x: {
         ticks: { color: "#888", maxTicksLimit: 5 },
@@ -165,6 +188,7 @@ export default function GasTracker() {
     },
   };
 
+
   return (
     <div className="bg-[#0b0b15] border border-[#1f1f2d] rounded-2xl p-6 w-full max-w-5xl mx-auto shadow-lg">
       <div className="flex flex-col lg:flex-row gap-6">
@@ -174,9 +198,8 @@ export default function GasTracker() {
             <Zap className="text-purple-400" />
             <h2 className="text-xl font-semibold text-white">Gas Tracker</h2>
             <span
-              className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
-                live ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
-              }`}
+              className={`ml-2 px-2 py-0.5 rounded-full text-xs ${live ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
+                }`}
             >
               {live ? "LIVE" : "OFFLINE"}
             </span>
@@ -196,8 +219,8 @@ export default function GasTracker() {
                 {gasData.gasPrice < 20
                   ? "Low (great time to transact)"
                   : gasData.gasPrice < 40
-                  ? "Medium (normal activity)"
-                  : "High (network congested)"}
+                    ? "Medium (normal activity)"
+                    : "High (network congested)"}
               </p>
               {/* 🔥 Removed confirmation time */}
             </div>
