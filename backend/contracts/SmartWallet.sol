@@ -32,7 +32,7 @@ contract SmartWallet is Ownable {
         return address(this).balance;
     }
 
-    // MOCK swap: ETH -> Token (il wallet invia token al proprietario)
+    // MOCK swap: ETH -> Token
     function swapETHForTokens(address token, uint256 ethAmount) external onlyOwner {
         require(token != address(0), "Token non valido");
         require(address(this).balance >= ethAmount, "Saldo ETH insufficiente");
@@ -40,14 +40,14 @@ contract SmartWallet is Ownable {
         uint256 tokenAmount = ethAmount * MOCK_EXCHANGE_RATE;
         IERC20(token).transfer(msg.sender, tokenAmount);
 
-        // “bruciamo” l’ETH verso address(0) per simulare il costo
+        // ETH verso address(0) per simulare il costo
         (bool ok, ) = payable(address(0)).call{value: ethAmount}("");
         require(ok, "Burn ETH mock fallito");
 
         emit SwapEthForToken(msg.sender, token, ethAmount, tokenAmount);
     }
 
-    // MOCK swap: Token -> ETH (il wallet riceve token e invia ETH all’owner)
+    // MOCK swap: Token -> ETH
     function swapTokensForETH(address token, uint256 tokenAmount) external onlyOwner {
         require(token != address(0), "Token non valido");
 

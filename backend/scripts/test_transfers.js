@@ -1,7 +1,6 @@
 const { ethers } = require("hardhat");
 
 async function main() {
-  console.log("🚀 Inizio test manuale dei trasferimenti...");
 
   const [owner, receiver] = await ethers.getSigners();
 
@@ -10,8 +9,8 @@ async function main() {
   const WalletFactory = await ethers.getContractFactory("WalletFactory");
   const factory = await WalletFactory.attach(factoryAddress);
 
-  console.log("👤 Deployer:", owner.address);
-  console.log("📬 Factory:", factoryAddress);
+  console.log("Deployer:", owner.address);
+  console.log("Factory:", factoryAddress);
 
   // Crea un nuovo wallet
   const tx = await factory.createWallet();
@@ -29,18 +28,18 @@ async function main() {
     .find((parsed) => parsed && parsed.name === "WalletCreated");
 
   if (!event) {
-    throw new Error("❌ Evento WalletCreated non trovato!");
+    throw new Error("Evento WalletCreated non trovato");
   }
 
   const newWallet = event.args.wallet;
-  console.log("✅ Wallet creato:", newWallet);
+  console.log("Wallet creato:", newWallet);
 
   // Attacca il contratto SmartWallet
   const SmartWallet = await ethers.getContractFactory("SmartWallet");
   const wallet = await SmartWallet.attach(newWallet);
 
   // Invia 2 ETH al wallet
-  console.log("\n💰 Inviando 2 ETH al wallet...");
+  console.log("\nInviando 2 ETH al wallet...");
   await owner.sendTransaction({
     to: newWallet,
     value: ethers.parseEther("2.0"),
@@ -50,7 +49,7 @@ async function main() {
   console.log("Saldo iniziale wallet:", ethers.formatEther(balanceBefore), "ETH");
 
   // Trasferisci 0.5 ETH al receiver
-  console.log("\n💸 Trasferendo 0.5 ETH a:", receiver.address);
+  console.log("\nTrasferendo 0.5 ETH a:", receiver.address);
   await wallet.connect(owner).sendETH(receiver.address, ethers.parseEther("0.5"));
 
   const balanceAfter = await ethers.provider.getBalance(newWallet);
@@ -59,7 +58,6 @@ async function main() {
   console.log("Saldo wallet dopo:", ethers.formatEther(balanceAfter), "ETH");
   console.log("Saldo destinatario:", ethers.formatEther(receiverBalance), "ETH");
 
-  console.log("\n✅ Test completato con successo!");
 }
 
 main().catch((error) => {

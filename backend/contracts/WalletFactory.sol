@@ -9,20 +9,19 @@ contract WalletFactory {
 
     event WalletCreated(address indexed owner, address wallet);
 
-    /// @notice Crea un nuovo SmartWallet e lo associa a msg.sender
+    /// Crea un nuovo SmartWallet e lo associa a msg.sender
     function createWallet() external {
         SmartWallet wallet = new SmartWallet(msg.sender);
         userWallets[msg.sender].push(address(wallet));
         emit WalletCreated(msg.sender, address(wallet));
     }
 
-    /// @notice Getter “esplicito”
+    /// Getter “esplicito”
     function getUserWallets(address user) external view returns (address[] memory) {
         return userWallets[user];
     }
 
-    /// @notice 🔁 Alias per compatibilità con i test esistenti
-    ///         (stessa logica di getUserWallets, solo nome diverso)
+    /// Alias per compatibilità con i test esistenti
     function getWallets(address user) external view returns (address[] memory) {
         return userWallets[user];
     }
