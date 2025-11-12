@@ -2,7 +2,20 @@
 import { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import useWalletFactory from "../../hooks/useWalletFactory";
-import SmartWalletABI from "../../abi/SmartWallet.json"; // 👈 aggiungi ABI qui (assicurati che esista)
+import SmartWalletABI from "../../abi/SmartWallet.json";
+
+// ⬇️ icone (coerenti con il resto dell'app)
+import {
+  Send as SendIcon,
+  Wallet as WalletIcon,
+  User as UserIcon,
+  Shield as ShieldIcon,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 
 export default function SendEth() {
   const [selectedAccount, setSelectedAccount] = useState("");
@@ -14,21 +27,18 @@ export default function SendEth() {
   const [accounts, setAccounts] = useState([]);
   const [advancedMode, setAdvancedMode] = useState(false);
 
-  // ✅ Wallets del destinatario
   const {
     wallets: recipientWallets,
     balances: recipientBalances,
     refresh: refreshRecipient,
   } = useWalletFactory(selectedAccount);
 
-  // ✅ Wallets del sender (account loggato)
   const {
     wallets: senderWallets,
     balances: senderBalances,
     refresh: refreshSender,
   } = useWalletFactory(currentAccount);
 
-  // 🔹 Carica account da MetaMask
   const loadAccounts = async () => {
     if (!window.ethereum) return;
     try {
@@ -38,7 +48,7 @@ export default function SendEth() {
       setCurrentAccount(active);
       if (!selectedAccount) setSelectedAccount(active);
     } catch (err) {
-      console.error("❌ Error loading accounts:", err);
+      console.error("Error loading accounts:", err);
     }
   };
 
@@ -61,21 +71,20 @@ export default function SendEth() {
     }
   }, []);
 
-  // 💸 Invio ETH
   async function handleSend() {
     const to = destinationWallet;
     const fromAddr = advancedMode && senderWallet ? senderWallet : currentAccount;
 
     if (!to || !ethers.isAddress(to)) {
-      alert("❌ Please select a valid destination wallet.");
+      alert("Please select a valid destination wallet.");
       return;
     }
     if (!amount || isNaN(amount) || Number(amount) <= 0) {
-      alert("❌ Please enter a valid amount in ETH.");
+      alert("Please enter a valid amount in ETH.");
       return;
     }
     if (to.toLowerCase() === fromAddr.toLowerCase()) {
-      alert("⚠️ You cannot send ETH to yourself.");
+      alert("You cannot send ETH to yourself.");
       return;
     }
 
@@ -86,36 +95,35 @@ export default function SendEth() {
 
       let tx;
 
-      // ✅ CASE 1: main MetaMask account
       if (fromAddr.toLowerCase() === currentAccount.toLowerCase()) {
         tx = await signer.sendTransaction({
           to,
           value: ethers.parseEther(amount),
         });
-      }
-      // ✅ CASE 2: Smart Wallet contract
-      else {
+      } else {
         const walletContract = new ethers.Contract(fromAddr, SmartWalletABI, signer);
         tx = await walletContract.sendETH(to, ethers.parseEther(amount));
       }
 
       await tx.wait();
-      console.log("✅ Transaction confirmed:", tx.hash);
+      console.log("Transaction confirmed:", tx.hash);
 
       await Promise.all([refreshSender(), refreshRecipient()]);
       setTxStatus("success");
       setAmount("");
     } catch (err) {
-      console.error("❌ Transaction failed:", err);
+      console.error("Transaction failed:", err);
       setTxStatus("error");
     }
   }
 
   return (
     <div className="mt-12 p-6 bg-[#151520]/80 backdrop-blur-md border border-[#2b2b3d] rounded-2xl shadow-lg w-[440px] flex flex-col items-center text-white">
-      <h3 className="text-xl font-semibold mb-4">💸 Send ETH</h3>
+      <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+        <SendIcon size={18} className="text-purple-400" />
+        Send ETH
+      </h3>
 
-      {/* 1️⃣ Account selection */}
       <label className="text-sm text-gray-400 self-start mb-1">Select Account</label>
       <select
         value={selectedAccount}
@@ -142,7 +150,6 @@ export default function SendEth() {
         ))}
       </select>
 
-      {/* 2️⃣ Destinazione: main account o smart wallets */}
       {selectedAccount && (
         <>
           <label className="text-sm text-gray-400 self-start mb-1">
@@ -155,30 +162,34 @@ export default function SendEth() {
           >
             <option value="">-- Choose recipient --</option>
 
-            {/* 👇 Main account */}
             <option value={selectedAccount}>
-              {selectedAccount.slice(0, 8)}…{selectedAccount.slice(-6)} — 🔹 Main Account
+              {selectedAccount.slice(0, 8)}…{selectedAccount.slice(-6)} — Main Account
             </option>
 
-            {/* 👇 Wallets associati */}
             {recipientWallets.map((w) => (
               <option key={w} value={w}>
-                {w} — 💠 Smart Wallet — {Number(recipientBalances[w] || 0).toFixed(4)} ETH
+                {w} — Smart Wallet — {Number(recipientBalances[w] || 0).toFixed(4)} ETH
               </option>
             ))}
           </select>
         </>
       )}
 
-      {/* ⚙️ Advanced Mode */}
       <button
         onClick={() => setAdvancedMode((p) => !p)}
-        className="text-xs text-purple-400 mb-3 hover:underline self-end"
+        className="text-xs text-purple-400 mb-3 hover:underline self-end flex items-center gap-1"
       >
-        {advancedMode ? "Hide advanced options ▲" : "Show advanced options ▼"}
+        {advancedMode ? (
+          <>
+            Hide advanced options <ChevronUp size={14} />
+          </>
+        ) : (
+          <>
+            Show advanced options <ChevronDown size={14} />
+          </>
+        )}
       </button>
 
-      {/* 3️⃣ Sender Wallet */}
       {advancedMode && (
         <>
           <label className="text-sm text-gray-400 self-start mb-1">
@@ -191,18 +202,17 @@ export default function SendEth() {
           >
             <option value="">-- Use default signer (MetaMask) --</option>
             <option value={currentAccount}>
-              {currentAccount.slice(0, 8)}…{currentAccount.slice(-6)} — 🔹 Main Account (you)
+              {currentAccount.slice(0, 8)}…{currentAccount.slice(-6)} — Main Account (you)
             </option>
             {senderWallets.map((w) => (
               <option key={w} value={w}>
-                {w} — 💠 Smart Wallet — {Number(senderBalances[w] || 0).toFixed(4)} ETH
+                {w} — Smart Wallet — {Number(senderBalances[w] || 0).toFixed(4)} ETH
               </option>
             ))}
           </select>
         </>
       )}
 
-      {/* 4️⃣ Amount */}
       {destinationWallet && (
         <>
           <input
@@ -219,22 +229,35 @@ export default function SendEth() {
               txStatus === "pending"
                 ? "bg-gray-500 cursor-not-allowed"
                 : "bg-gradient-to-r from-purple-500 to-indigo-600 hover:scale-105"
-            }`}
+            } flex items-center justify-center gap-2`}
           >
-            {txStatus === "pending" ? "Sending..." : "Send ETH"}
+            {txStatus === "pending" ? (
+              <>
+                <Loader2 className="animate-spin" size={16} /> Sending...
+              </>
+            ) : (
+              <>
+                <SendIcon size={16} /> Send ETH
+              </>
+            )}
           </button>
         </>
       )}
 
-      {/* 🧠 TX Status */}
       {txStatus === "pending" && (
-        <p className="mt-4 text-yellow-400 text-sm">⏳ Transaction pending...</p>
+        <p className="mt-4 text-yellow-400 text-sm flex items-center gap-2">
+          <Loader2 className="animate-spin" size={16} /> Transaction pending...
+        </p>
       )}
       {txStatus === "success" && (
-        <p className="mt-4 text-green-400 text-sm">✅ Transaction successful!</p>
+        <p className="mt-4 text-green-400 text-sm flex items-center gap-2">
+          <CheckCircle2 size={16} /> Transaction successful!
+        </p>
       )}
       {txStatus === "error" && (
-        <p className="mt-4 text-red-400 text-sm">❌ Transaction failed.</p>
+        <p className="mt-4 text-red-400 text-sm flex items-center gap-2">
+          <XCircle size={16} /> Transaction failed.
+        </p>
       )}
     </div>
   );

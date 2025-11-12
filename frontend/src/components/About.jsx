@@ -3,12 +3,10 @@ import Tilt from "react-parallax-tilt";
 import { motion, useAnimation } from "framer-motion";
 import { styles } from "../styles";
 import { fadeIn, textVariant } from "../utils/motion";
-
-// 🧩 Icone da react-icons
 import { FaWallet, FaCubes, FaEthereum } from "react-icons/fa";
 import { SiChainlink } from "react-icons/si";
 
-// 💎 Servizi EtherConnect
+// EtherConnect
 const services = [
   { title: "Smart Wallets", icon: <FaWallet size={48} color="white" /> },
   { title: "dApp Integration", icon: <FaCubes size={48} color="white" /> },
@@ -16,7 +14,6 @@ const services = [
   { title: "ETH Transfers", icon: <FaEthereum size={48} color="white" /> },
 ];
 
-// 💫 Card effetto Tilt + bordo neon
 const ServiceCard = ({ index, title, icon }) => (
   <Tilt className="xs:w-[250px] sm:w-[270px] w-full">
     <motion.div
@@ -33,7 +30,6 @@ const ServiceCard = ({ index, title, icon }) => (
   </Tilt>
 );
 
-// 💰 ETH/USD live box con logo ETH "DVD-style"
 const EthPrice = () => {
   const [price, setPrice] = useState(null);
   const [prevPrice, setPrevPrice] = useState(null);
@@ -153,7 +149,6 @@ const About = () => {
       className="max-w-7xl mx-auto px-6 mt-32 pb-24 relative z-20 bg-[#060816]"
     >
       <div className="flex flex-row justify-between items-center">
-        {/* --- Testo --- */}
         <div>
           <motion.div variants={textVariant()}>
             <p className={styles.sectionSubText}>
@@ -181,11 +176,9 @@ const About = () => {
           </motion.p>
         </div>
 
-        {/* --- Prezzo ETH --- */}
         <EthPrice />
       </div>
 
-      {/* --- Cards dei servizi --- */}
       <div className="mt-20 flex flex-wrap gap-10 justify-center pb-[100px]">
         {services.map((service, index) => (
           <ServiceCard key={service.title} index={index} {...service} />

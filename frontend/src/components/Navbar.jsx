@@ -9,7 +9,7 @@ export default function Navbar({ account, setAccount, variant = "home" }) {
   const [showMenu, setShowMenu] = useState(false);
   const dropdownRef = useRef(null);
 
-  // 🎲 Avatar casuale → si aggiorna ogni volta che cambia account
+  // Avatar random
   useEffect(() => {
     if (!account) return;
 
@@ -18,7 +18,7 @@ export default function Navbar({ account, setAccount, variant = "home" }) {
     setAvatar(`/avatars/avatar${randomIndex}.png`);
   }, [account]);
 
-  // 💰 Aggiorna bilancio dinamicamente
+  // Aggiorna bilancio
   useEffect(() => {
     if (!account || !window.ethereum) return;
 
@@ -40,7 +40,7 @@ export default function Navbar({ account, setAccount, variant = "home" }) {
     return () => clearInterval(interval);
   }, [account]);
 
-  // 🔒 Chiudi menu cliccando fuori
+  // Chiudi menu cliccando fuori
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -51,7 +51,7 @@ export default function Navbar({ account, setAccount, variant = "home" }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // 🚪 Disconnessione
+  // Logout 
   const disconnectWallet = () => {
     try {
       setShowMenu(false);
@@ -60,7 +60,7 @@ export default function Navbar({ account, setAccount, variant = "home" }) {
       sessionStorage.clear();
       window.location.href = "/";
     } catch (e) {
-      console.error("❌ Disconnect error:", e);
+      console.error("Disconnect error:", e);
       window.location.href = "/";
     }
   };
@@ -76,7 +76,6 @@ export default function Navbar({ account, setAccount, variant = "home" }) {
     <nav className="w-full flex justify-between items-center px-8 py-4 fixed top-0 left-0 z-[9999]
       backdrop-blur-xl bg-[#0d0d16]/70 border-b-0
       shadow-[0_4px_30px_rgba(0,0,0,0.4)] ring-1 ring-white/5 rounded-none">
-      {/* Logo + nome */}
       <div
         onClick={handleLogoClick}
         className={`flex items-center gap-3 select-none ${
@@ -93,10 +92,8 @@ export default function Navbar({ account, setAccount, variant = "home" }) {
         </h1>
       </div>
 
-      {/* Account info */}
       {variant === "home" && account && (
         <div className="flex items-center gap-5" ref={dropdownRef}>
-          {/* 💰 Balance */}
           <div
             className={`text-sm font-medium flex items-center gap-1 ${
               balanceChanged
@@ -107,7 +104,6 @@ export default function Navbar({ account, setAccount, variant = "home" }) {
             Ξ {balance !== null ? balance.toFixed(4) : "0.0000"} ETH
           </div>
 
-          {/* Avatar + menu */}
           <div className="relative">
             <img
               src={avatar}

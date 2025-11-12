@@ -128,7 +128,6 @@ export default function GasTracker() {
       </div>
     );
 
-  // --- Chart.js Data ---
   const chartData = {
     labels: history.map((d) => d.time),
     datasets: [
@@ -153,7 +152,6 @@ export default function GasTracker() {
     ],
   };
 
-  // --- Chart.js Options ---
   const chartOptions = {
     animation: { duration: 800, easing: "easeInOutQuad" },
     interaction: {
@@ -192,7 +190,6 @@ export default function GasTracker() {
   return (
     <div className="bg-[#0b0b15] border border-[#1f1f2d] rounded-2xl p-6 w-full max-w-5xl mx-auto shadow-lg">
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* LEFT PANEL */}
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-4">
             <Zap className="text-purple-400" />
@@ -222,7 +219,6 @@ export default function GasTracker() {
                     ? "Medium (normal activity)"
                     : "High (network congested)"}
               </p>
-              {/* 🔥 Removed confirmation time */}
             </div>
 
             <div className="text-right text-sm text-gray-400">
@@ -239,7 +235,6 @@ export default function GasTracker() {
             </div>
           </div>
 
-          {/* TX COSTS */}
           <div className="bg-[#141421] rounded-xl p-4 mb-3 text-gray-300">
             <p className="font-semibold mb-2 flex items-center gap-2">
               <Coins size={14} className="text-purple-400" /> Estimated Transaction Cost
@@ -268,7 +263,6 @@ export default function GasTracker() {
           </div>
         </div>
 
-        {/* RIGHT PANEL */}
         <div className="flex-1 bg-[#141421] rounded-xl p-4">
           <h3 className="text-sm text-gray-300 mb-2 font-medium">
             Gas Price Trend (Gwei)

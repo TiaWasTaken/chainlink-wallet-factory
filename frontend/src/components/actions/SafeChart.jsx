@@ -11,7 +11,7 @@ export class SafeChart extends React.Component {
   }
 
   componentDidCatch(error, info) {
-    console.error("🔥 Chart crashed:", error, info);
+    console.error("Chart crashed:", error, info);
   }
 
   render() {

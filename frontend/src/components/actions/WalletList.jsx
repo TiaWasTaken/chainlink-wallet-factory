@@ -13,11 +13,11 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
   const [accounts, setAccounts] = useState([]);
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
 
-  // 🔹 Carica gli account da MetaMask
+  // Carica gli account da MetaMask
   useEffect(() => {
     async function loadAccounts() {
       if (!window.ethereum) {
-        console.warn("⚠️ MetaMask not detected");
+        console.warn("MetaMask not detected");
         setIsLoadingAccounts(false);
         return;
       }
@@ -27,11 +27,11 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
           setAccounts(accs);
           setSelectedAccount(accs[0]);
         } else {
-          console.warn("⚠️ No accounts returned from MetaMask");
+          console.warn("No accounts returned from MetaMask");
           setAccounts([]);
         }
       } catch (err) {
-        console.error("❌ Error loading MetaMask accounts:", err);
+        console.error("Error loading MetaMask accounts:", err);
       } finally {
         setIsLoadingAccounts(false);
       }
@@ -39,10 +39,10 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
 
     loadAccounts();
 
-    // 👂 aggiorna dinamicamente quando cambia l’account in MetaMask
+    // aggiorna dinamicamente quando cambia l’account in MetaMask
     if (window.ethereum) {
       const handleAccountsChanged = (accs) => {
-        console.log("🔄 MetaMask account changed:", accs);
+        console.log("MetaMask account changed:", accs);
         setAccounts(accs || []);
         if (accs && accs.length > 0) setSelectedAccount(accs[0]);
       };
@@ -51,13 +51,13 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
     }
   }, []);
 
-  // 🧠 Hook: mostra i wallet relativi all’account selezionato
+  // Hook: mostra i wallet relativi all’account selezionato
   const { wallets, balances, isLoading, createWallet } = useWalletFactory(selectedAccount);
   const hasWallets = useMemo(() => wallets && wallets.length > 0, [wallets]);
   const isOwnAccount =
     currentAccount && selectedAccount?.toLowerCase() === currentAccount?.toLowerCase();
 
-  // 🔒 Gestione stati iniziali
+  // Gestione stati iniziali
   if (isLoadingAccounts) {
     return (
       <div className="flex flex-col items-center justify-center text-gray-400 mt-10 animate-pulse">
@@ -69,7 +69,7 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
   if (!accounts || accounts.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center text-gray-500 mt-10">
-        ⚠️ No accounts found. Please connect MetaMask.
+        No accounts found. Please connect MetaMask.
       </div>
     );
   }
@@ -81,14 +81,12 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
       transition={{ duration: 0.4 }}
       className="flex flex-col items-center w-full max-w-5xl px-6"
     >
-      {/* 🧭 Header */}
       <div className="flex justify-between w-full items-center mb-8 flex-wrap gap-3">
         <h3 className="text-2xl font-semibold text-white tracking-tight">
           Your Smart Wallets
         </h3>
 
         <div className="flex items-center gap-3">
-          {/* Account Selector */}
           <select
             value={selectedAccount}
             onChange={(e) => setSelectedAccount(e.target.value)}
@@ -111,7 +109,6 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
             })}
           </select>
 
-          {/* Bottone Create Wallet → solo per il proprio account */}
           {isOwnAccount && (
             <button
               onClick={createWallet}
@@ -128,12 +125,10 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
         </div>
       </div>
 
-      {/* Stato caricamento */}
       {isLoading && (
         <p className="text-gray-400 mb-6 animate-pulse">Working on it…</p>
       )}
 
-      {/* Lista Wallets */}
       {hasWallets ? (
         <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6 w-full">
           {wallets.map((wallet) => {

@@ -33,10 +33,10 @@ export default function Home() {
 
     const handleAccountsChanged = (accounts) => {
       if (accounts.length > 0) {
-        console.log("✅ Account switched:", accounts[0]);
+        console.log("Account switched:", accounts[0]);
         setAccount(accounts[0]);
       } else {
-        console.log("⚠️ No account found, redirecting...");
+        console.log("No account found, redirecting...");
         setAccount(null);
         window.location.replace("/");
       }
@@ -53,15 +53,14 @@ export default function Home() {
       setAccount(null);
       localStorage.clear();
       sessionStorage.clear();
-      console.log("🧹 Disconnected & cache cleared");
+      console.log("Disconnected & cache cleared");
       window.location.replace("/");
     } catch (err) {
-      console.error("❌ Disconnect error:", err);
+      console.error("Disconnect error:", err);
       window.location.replace("/");
     }
   }
 
-  {/* Global toast system */ }
   <div
     id="toast"
     className="fixed top-6 right-6 z-50 px-4 py-2 bg-[#151520]/80 text-gray-100 rounded-lg shadow-lg border border-[#2b2b3d] opacity-0 transition-opacity duration-500"
@@ -81,17 +80,15 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#060816] text-gray-200 overflow-x-hidden">
-      {/* Navbar */}
+
       <Navbar variant="home" account={account} setAccount={setAccount} />
 
-      {/* Hero section */}
       <Hero />
 
       <About />
 
       <EtherMenu account={account} />
 
-      {/* Disconnect button (temporaneo) */}
       <div className="flex justify-center py-10">
         <button
           onClick={disconnectWallet}

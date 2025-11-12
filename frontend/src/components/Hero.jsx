@@ -11,17 +11,14 @@ const Hero = () => {
       className="relative w-full h-[105vh] mx-auto bg-cover bg-no-repeat bg-center"
       style={{ backgroundImage: "url('/herobg.png')" }}
     >
-      {/* === Wrapper interno === */}
       <div
         className={`${styles.paddingX} absolute inset-0 top-[140px] max-w-7xl mx-auto flex flex-row items-start gap-5`}
       >
-        {/* Side accent line */}
         <div className="flex flex-col justify-center items-center mt-5">
           <div className="w-5 h-5 rounded-full bg-[#915eff]" />
           <div className="w-1 sm:h-80 h-40 bg-gradient-to-b from-[#915eff] to-transparent" />
         </div>
 
-        {/* Text content */}
         <div className="z-50 mt-6">
           <h1 className={`${styles.heroHeadText} text-white`}>
             This is <span className="text-[#915eff]">Ether</span>Connect
@@ -34,7 +31,6 @@ const Hero = () => {
             <span className="text-[#915eff]">Connection</span>
           </p>
 
-          {/* Socials */}
           <div className="flex flex-row items-center space-x-4 mt-6 z-50">
             <a
               href="https://github.com/TiaWasTaken"
@@ -65,7 +61,6 @@ const Hero = () => {
         </div>
       </div>
 
-      {/* === 3D model === */}
       <div className="relative z-0 mt-[-40px] mb-[-40px]">
         <ComputersCanvas />
       </div>

@@ -7,7 +7,7 @@ export default function Login() {
 
   async function connectWallet() {
     if (typeof window === "undefined" || !window.ethereum) {
-      setError("⚠️ Please install MetaMask to continue.");
+      setError("Please install MetaMask to continue.");
       return;
     }
 
@@ -25,7 +25,7 @@ export default function Login() {
       });
 
       if (!accounts || accounts.length === 0) {
-        setError("❌ No account selected.");
+        setError("No account selected.");
         return;
       }
 
@@ -37,7 +37,7 @@ export default function Login() {
       }, 1000);
     } catch (err) {
       console.error(err);
-      setError("❌ Connection failed or denied.");
+      setError("Connection failed or denied.");
     }
   }
 
@@ -45,11 +45,9 @@ export default function Login() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#0e001a] via-[#15002b] to-[#220044] text-gray-100 relative overflow-hidden">
       <Navbar variant="login" />
 
-      {/* Glow background */}
       <div className="absolute w-[600px] h-[600px] bg-purple-400/20 rounded-full blur-3xl top-1/3 -left-1/3" />
       <div className="absolute w-[600px] h-[600px] bg-fuchsia-400/20 rounded-full blur-3xl bottom-1/3 -right-1/3" />
 
-      {/* ✅ Floating 2D Logo */}
       <div className="relative mb-10 mt-10 animate-float select-none">
         <img
           src="/icons/eth_logo.png"
@@ -58,19 +56,16 @@ export default function Login() {
         />
       </div>
 
-      {/* Title */}
       <h1 className="text-5xl font-extrabold mb-3 text-white text-center">
         Connect Your Wallet
       </h1>
 
-      {/* Subtitle */}
       <p className="text-gray-400 mb-8 text-center max-w-md">
         Access your dashboard securely with{" "}
         <span className="text-purple-400 font-semibold">MetaMask</span>.
         Your gateway to the decentralized web.
       </p>
 
-      {/* Button */}
       <button
         onClick={connectWallet}
         className="relative group flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-semibold rounded-xl shadow-md hover:shadow-purple-400/50 hover:scale-105 transition-transform duration-300 overflow-hidden"
@@ -85,28 +80,24 @@ export default function Login() {
       </button>
 
 
-      {/* ✅ Connection state */}
       {account && (
         <p className="mt-6 text-sm text-green-400 font-medium">
           ✅ Connected: {account.slice(0, 6)}...{account.slice(-4)}
         </p>
       )}
 
-      {/* ❌ Error state */}
       {error && (
         <p className="mt-6 text-sm text-red-400 text-center max-w-xs">
           {error}
         </p>
       )}
 
-      {/* Footer */}
       <p className="text-sm text-gray-500 mt-8 text-center max-w-md mb-6">
         Having issues? Ensure your{" "}
         <span className="text-purple-400 font-medium">Hardhat node</span> is running and{" "}
         <span className="text-purple-400 font-medium">Localhost</span> network is selected.
       </p>
 
-      {/* ✨ Keyframes for floating effect */}
       <style jsx>{`
         @keyframes float {
           0% {

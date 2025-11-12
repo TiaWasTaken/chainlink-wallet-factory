@@ -31,7 +31,6 @@ const SectionPlaceholder = ({ title }) => (
 export default function EtherMenu({ account, setActiveWallet }) {
   const [selected, setSelected] = useState(null);
 
-  // ✅ Scambiato ordine: Wallets prima di Send ETH
   const menuItems = [
     { id: "wallets", label: "Wallets & Factory", icon: <Factory size={20} /> },
     { id: "send", label: "Send ETH", icon: <Send size={20} /> },
@@ -60,14 +59,12 @@ export default function EtherMenu({ account, setActiveWallet }) {
 
   return (
     <section className="relative w-full py-24 flex flex-col items-center text-white overflow-hidden">
-      {/* 🌌 Soft gradient background */}
       <motion.div
         className="absolute top-[250px] left-1/2 -translate-x-1/2 w-[900px] h-[450px] rounded-full bg-[radial-gradient(circle_at_center,_rgba(145,94,255,0.12)_0%,_rgba(0,0,0,0)_70%)] blur-3xl z-0 pointer-events-none"
         animate={{ scale: [1, 1.05, 1] }}
         transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
       />
 
-      {/* 🧭 Title */}
       <motion.h2
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -77,7 +74,6 @@ export default function EtherMenu({ account, setActiveWallet }) {
         Explore the App
       </motion.h2>
 
-      {/* 🔘 Command Bar */}
       <motion.div
         initial={{ opacity: 0, y: 25 }}
         animate={{ opacity: 1, y: 0 }}
@@ -116,7 +112,6 @@ export default function EtherMenu({ account, setActiveWallet }) {
         ))}
       </motion.div>
 
-      {/* 🎬 Section below */}
       <AnimatePresence mode="wait">
         {selected && (
           <motion.div
