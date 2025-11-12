@@ -12,6 +12,7 @@ import {
 import WalletList from "./actions/WalletList";
 import SendEth from "./actions/SendEth";
 import GasTracker from "./actions/GasTracker";
+import TransactionHistory from "./actions/TransactionHistory";
 
 const SectionPlaceholder = ({ title }) => (
   <motion.div
@@ -48,6 +49,8 @@ export default function EtherMenu({ account, setActiveWallet }) {
         return <SendEth account={account} />;
       case "gas":
         return <GasTracker />;
+      case "history":
+        return <TransactionHistory />;
       default:
         return (
           <SectionPlaceholder

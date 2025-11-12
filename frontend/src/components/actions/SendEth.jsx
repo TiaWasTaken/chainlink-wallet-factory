@@ -3,13 +3,10 @@ import { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import useWalletFactory from "../../hooks/useWalletFactory";
 import SmartWalletABI from "../../abi/SmartWallet.json";
+import useLocalTxHistory from "../../hooks/useLocalTxHistory";
 
-// ⬇️ icone (coerenti con il resto dell'app)
 import {
   Send as SendIcon,
-  Wallet as WalletIcon,
-  User as UserIcon,
-  Shield as ShieldIcon,
   Loader2,
   CheckCircle2,
   XCircle,
@@ -38,6 +35,8 @@ export default function SendEth() {
     balances: senderBalances,
     refresh: refreshSender,
   } = useWalletFactory(currentAccount);
+
+  const { addTx } = useLocalTxHistory();
 
   const loadAccounts = async () => {
     if (!window.ethereum) return;
@@ -105,8 +104,18 @@ export default function SendEth() {
         tx = await walletContract.sendETH(to, ethers.parseEther(amount));
       }
 
+      console.log("Transaction sent:", tx.hash);
       await tx.wait();
       console.log("Transaction confirmed:", tx.hash);
+
+      addTx({
+        hash: tx.hash,
+        from: fromAddr,
+        to,
+        amount,
+        timestamp: new Date().toISOString(),
+        status: "success",
+      });
 
       await Promise.all([refreshSender(), refreshRecipient()]);
       setTxStatus("success");
@@ -114,6 +123,15 @@ export default function SendEth() {
     } catch (err) {
       console.error("Transaction failed:", err);
       setTxStatus("error");
+
+      addTx({
+        hash: err?.transaction?.hash || "N/A",
+        from: senderWallet || currentAccount,
+        to: destinationWallet,
+        amount,
+        timestamp: new Date().toISOString(),
+        status: "error",
+      });
     }
   }
 
