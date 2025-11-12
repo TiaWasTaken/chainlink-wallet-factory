@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       backgroundImage: {
-        "hero-pattern": "url('/herobg.png')", // ✅ percorso corretto perché il file è in /public
+        "hero-pattern": "url('/herobg.png')",
       },
     },
   },
