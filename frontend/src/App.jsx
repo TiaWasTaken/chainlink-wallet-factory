@@ -13,10 +13,10 @@ export default function App() {
     // Aggiorna account quando cambia in MetaMask
     const handleAccountsChanged = (accounts) => {
       if (accounts.length > 0) {
-        console.log("✅ Account switched:", accounts[0]);
+        console.log("Account switched:", accounts[0]);
         setAccount(accounts[0]);
       } else {
-        console.log("⚠️ No account found, disconnecting...");
+        console.log("No account found, disconnecting...");
         setAccount(null);
       }
     };
