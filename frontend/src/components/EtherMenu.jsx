@@ -9,6 +9,7 @@ import {
   Link,
   History,
 } from "lucide-react";
+
 import WalletList from "./actions/WalletList";
 import SendEth from "./actions/SendEth";
 import GasTracker from "./actions/GasTracker";
@@ -61,11 +62,15 @@ export default function EtherMenu({ account, setActiveWallet }) {
   };
 
   return (
-    <section className="relative w-full py-24 flex flex-col items-center text-white overflow-hidden">
+    <section
+      className={`relative w-full flex flex-col items-center text-white overflow-visible ${
+        selected ? "py-24" : "pt-24 pb-32"
+      }`}
+    >
       <motion.div
         className="absolute top-[250px] left-1/2 -translate-x-1/2 w-[900px] h-[450px] rounded-full bg-[radial-gradient(circle_at_center,_rgba(145,94,255,0.12)_0%,_rgba(0,0,0,0)_70%)] blur-3xl z-0 pointer-events-none"
         animate={{ scale: [1, 1.05, 1] }}
-        transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
       />
 
       <motion.h2
@@ -97,10 +102,11 @@ export default function EtherMenu({ account, setActiveWallet }) {
                 ? { scale: [1, 1.02, 1], transition: { repeat: Infinity, duration: 2 } }
                 : {}
             }
-            className={`relative overflow-hidden flex flex-col items-center justify-center gap-2 w-36 h-28 rounded-xl transition-all duration-300 ${selected === item.id
-              ? "bg-gradient-to-b from-[#6b3aff]/80 to-[#915eff]/70 text-white shadow-[0_0_25px_rgba(145,94,255,0.4)]"
-              : "bg-[#1b1b2a]/80 hover:bg-[#252540]/80 text-gray-400"
-              }`}
+            className={`relative overflow-hidden flex flex-col items-center justify-center gap-2 w-36 h-28 rounded-xl transition-all duration-300 ${
+              selected === item.id
+                ? "bg-gradient-to-b from-[#6b3aff]/80 to-[#915eff]/70 text-white shadow-[0_0_25px_rgba(145,94,255,0.4)]"
+                : "bg-[#1b1b2a]/80 hover:bg-[#252540]/80 text-gray-400"
+            }`}
           >
             <motion.span
               className="absolute inset-0 rounded-xl bg-[#915eff]/20 opacity-0"

@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import Hero from "../components/Hero";
 import About from "../components/About";
 import EtherMenu from "../components/EtherMenu";
+import Footer from "../components/Footer";
 
 export default function Home() {
   const [account, setAccount] = useState(null);
@@ -89,14 +90,16 @@ export default function Home() {
 
       <EtherMenu account={account} />
 
-      <div className="flex justify-center py-10">
+      <Footer />
+
+      {/* <div className="flex justify-center py-10">
         <button
           onClick={disconnectWallet}
           className="px-6 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-semibold rounded-lg shadow-sm hover:scale-105 transition-transform duration-200"
         >
           Disconnect
         </button>
-      </div>
+      </div> */}
     </div>
   );
 }
