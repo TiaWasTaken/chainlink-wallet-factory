@@ -14,6 +14,7 @@ import WalletList from "./actions/WalletList";
 import SendEth from "./actions/SendEth";
 import GasTracker from "./actions/GasTracker";
 import TransactionHistory from "./actions/TransactionHistory";
+import OraclePrice from "./actions/OraclePrice";
 
 const SectionPlaceholder = ({ title }) => (
   <motion.div
@@ -52,6 +53,8 @@ export default function EtherMenu({ account, setActiveWallet }) {
         return <GasTracker />;
       case "history":
         return <TransactionHistory />;
+      case "oracle":
+        return <OraclePrice />;
       default:
         return (
           <SectionPlaceholder
@@ -63,8 +66,8 @@ export default function EtherMenu({ account, setActiveWallet }) {
 
   return (
     <section
-      className={`relative w-full flex flex-col items-center text-white overflow-visible ${
-        selected ? "py-24" : "pt-24 pb-32"
+      className={`relative w-full min-h-[700px] flex flex-col items-center text-white overflow-visible ${
+        selected ? "pt-24 pb-40" : "pt-24 pb-32"
       }`}
     >
       <motion.div

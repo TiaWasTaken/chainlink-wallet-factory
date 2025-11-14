@@ -28,7 +28,7 @@ export default function Footer() {
 
         {/* Links */}
         <div className="flex justify-center gap-6 mt-6 text-sm text-gray-400">
-          <a href="#" className="hover:text-purple-400 transition">GitHub</a>
+          <a href="https://github.com/TiaWasTaken" target="_blank" className="hover:text-purple-400 transition">GitHub</a>
           <a href="#" className="hover:text-purple-400 transition">Docs</a>
           <a href="#" className="hover:text-purple-400 transition">Smart Contract</a>
         </div>
