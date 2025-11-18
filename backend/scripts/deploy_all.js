@@ -49,7 +49,8 @@ async function main() {
     "MockToken",
     "PriceConsumerV3",
     "MockV3Aggregator",
-    "OraclePrice"
+    "OraclePrice",
+    "SmartWallet"
   ];
 
   for (const name of contracts) {
