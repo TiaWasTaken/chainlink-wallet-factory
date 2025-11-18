@@ -28,7 +28,7 @@ export default function OraclePrice() {
     labels: history.map((d) => d.time),
     datasets: [
       {
-        label: "ETH/USD Price",
+        label: "Live Price",
         data: history.map((d) => d.value),
         borderColor: "#a855f7",
         borderWidth: 2,
@@ -65,7 +65,6 @@ export default function OraclePrice() {
     <div className="bg-[#0b0b15] border border-[#1f1f2d] rounded-2xl p-6 w-full max-w-6xl mx-auto shadow-lg">
       <div className="flex flex-col lg:flex-row gap-6">
         
-        {/* LEFT SIDE — PRICE + DATA */}
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-4">
             <h2 className="text-xl font-semibold text-white">Oracle Price</h2>
@@ -79,7 +78,7 @@ export default function OraclePrice() {
           </div>
 
           <p className="text-gray-400 text-sm mb-4">
-            ETH/USD from Chainlink-compatible Price Feed (Mock)
+            Chainlink-compatible Price Feed (Mock)
           </p>
 
           <div className="flex justify-between items-start mb-4">
@@ -105,7 +104,6 @@ export default function OraclePrice() {
             </div>
           </div>
 
-          {/* Technical info block */}
           <div className="bg-[#141421] rounded-xl p-4 mb-3 text-gray-300 text-sm">
             <p className="font-semibold mb-2">Technical details</p>
 
@@ -132,7 +130,6 @@ export default function OraclePrice() {
           </div>
         </div>
 
-        {/* RIGHT SIDE — CHART */}
         <div className="flex-1 bg-[#141421] rounded-xl p-4">
           <h3 className="text-sm text-gray-300 mb-2 font-medium">
             Price Trend (Last 30 updates)
