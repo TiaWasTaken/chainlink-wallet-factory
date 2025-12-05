@@ -15,6 +15,7 @@ import SendEth from "./actions/SendEth";
 import GasTracker from "./actions/GasTracker";
 import TransactionHistory from "./actions/TransactionHistory";
 import OraclePrice from "./actions/OraclePrice";
+import SwapSection from "./actions/SwapSection"; // 👈 NEW
 
 const SectionPlaceholder = ({ title }) => (
   <motion.div
@@ -37,7 +38,7 @@ export default function EtherMenu({ account, setActiveWallet }) {
   const menuItems = [
     { id: "wallets", label: "Wallets & Factory", icon: <Factory size={20} /> },
     { id: "send", label: "Send ETH", icon: <Send size={20} /> },
-    { id: "swap", label: "Token Swap", icon: <Repeat size={20} /> },
+    { id: "swap", label: "Token Swap", icon: <Repeat size={20} /> }, // 👈 già c’era
     { id: "gas", label: "Gas Tracker", icon: <Gauge size={20} /> },
     { id: "oracle", label: "Oracle Price", icon: <Link size={20} /> },
     { id: "history", label: "Tx History", icon: <History size={20} /> },
@@ -46,9 +47,16 @@ export default function EtherMenu({ account, setActiveWallet }) {
   const renderSection = () => {
     switch (selected) {
       case "wallets":
-        return <WalletList currentAccount={account} setActiveWallet={setActiveWallet} />;
+        return (
+          <WalletList
+            currentAccount={account}
+            setActiveWallet={setActiveWallet}
+          />
+        );
       case "send":
         return <SendEth account={account} />;
+      case "swap":                     // 👈 NEW
+        return <SwapSection />;        // usa il nuovo componente di swap
       case "gas":
         return <GasTracker />;
       case "history":
@@ -58,7 +66,10 @@ export default function EtherMenu({ account, setActiveWallet }) {
       default:
         return (
           <SectionPlaceholder
-            title={menuItems.find((i) => i.id === selected)?.label || "Select an option"}
+            title={
+              menuItems.find((i) => i.id === selected)?.label ||
+              "Select an option"
+            }
           />
         );
     }
@@ -94,7 +105,9 @@ export default function EtherMenu({ account, setActiveWallet }) {
         {menuItems.map((item) => (
           <motion.button
             key={item.id}
-            onClick={() => setSelected((prev) => (prev === item.id ? null : item.id))}
+            onClick={() =>
+              setSelected((prev) => (prev === item.id ? null : item.id))
+            }
             whileHover={{
               scale: 1.07,
               boxShadow: "0 0 18px rgba(145,94,255,0.3)",
@@ -102,7 +115,10 @@ export default function EtherMenu({ account, setActiveWallet }) {
             whileTap={{ scale: 0.95 }}
             animate={
               selected === item.id
-                ? { scale: [1, 1.02, 1], transition: { repeat: Infinity, duration: 2 } }
+                ? {
+                    scale: [1, 1.02, 1],
+                    transition: { repeat: Infinity, duration: 2 },
+                  }
                 : {}
             }
             className={`relative overflow-hidden flex flex-col items-center justify-center gap-2 w-36 h-28 rounded-xl transition-all duration-300 ${
