@@ -11,6 +11,7 @@
     "reset": "kill -9 $(lsof -t -i:8545) 2>/dev/null || true && rm -rf cache artifacts && echo '🧹 Cache cleared!' && npx hardhat node"
   },
   "devDependencies": {
+    "@chainlink/contracts": "^1.5.0",
     "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",
     "@nomicfoundation/hardhat-ethers": "^3.1.2",
     "@nomicfoundation/hardhat-network-helpers": "^1.1.2",
@@ -30,7 +31,6 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
-    "@chainlink/contracts": "^1.5.0",
     "@openzeppelin/contracts": "^5.4.0"
   },
   "overrides": {
