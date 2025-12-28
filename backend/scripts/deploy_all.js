@@ -76,16 +76,16 @@ async function main() {
   // 8) Seed di liquidità per lo swap
   // ------------------------
 
-  // 1,000,000 USDC (6 decimali)
-  const usdcLiquidity = ethers.parseUnits("1000000", 6);
-  const txUsdc = await usdcMock.transfer(ethUsdcSwap.target, usdcLiquidity);
-  await txUsdc.wait();
-  console.log("USDC liquidity sent to EthUsdcSwap");
+  // ✅ Mintiamo direttamente una quantità enorme di USDC allo swap
+  const usdcLiquidity = ethers.parseUnits("1000000000", 6); // 1,000,000,000 USDC
+  const txMint = await usdcMock.mint(ethUsdcSwap.target, usdcLiquidity);
+  await txMint.wait();
+  console.log("USDC liquidity minted to EthUsdcSwap");
 
-  // 100 ETH di liquidità
+  // 100 ETH di liquidità in ETH sul contratto di swap
   const txEth = await deployer.sendTransaction({
     to: ethUsdcSwap.target,
-    value: ethers.parseEther("100")
+    value: ethers.parseEther("100"),
   });
   await txEth.wait();
   console.log("ETH liquidity sent to EthUsdcSwap");
@@ -107,7 +107,7 @@ async function main() {
     "MockV3Aggregator",
     "OraclePrice",
     "USDCMock",      // NEW
-    "EthUsdcSwap"    // NEW
+    "EthUsdcSwap",   // NEW
   ];
 
   for (const name of contracts) {
@@ -131,8 +131,8 @@ async function main() {
     PriceConsumerV3: priceConsumer.target,
     MockV3Aggregator: mockAggregator.target,
     OraclePrice: oracle.target,
-    USDCMock: usdcMock.target,          // NEW
-    EthUsdcSwap: ethUsdcSwap.target     // NEW
+    USDCMock: usdcMock.target,        // NEW
+    EthUsdcSwap: ethUsdcSwap.target,  // NEW
   };
 
   fs.writeFileSync(

@@ -7,8 +7,13 @@ contract USDCMock is ERC20 {
     uint8 private constant _DECIMALS = 6;
 
     constructor() ERC20("USD Coin Mock", "USDC") {
-        // 1 miliardo di USDC mock, giusto per avere tanta liquidità
-        _mint(msg.sender, 1_000_000_000 * 10**_DECIMALS);
+        // Qualche milione al deployer, giusto per testare transfer manuali
+        _mint(msg.sender, 10_000_000 * 10**_DECIMALS);
+    }
+
+    /// @notice funzione di mint aperta (solo per ambiente di sviluppo)
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
     }
 
     function decimals() public view virtual override returns (uint8) {
