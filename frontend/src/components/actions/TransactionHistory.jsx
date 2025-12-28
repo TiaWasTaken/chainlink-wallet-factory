@@ -6,6 +6,8 @@ import {
   Clock3,
   Hammer,
   Trash2,
+  ArrowLeftRight,
+  Send,
 } from "lucide-react";
 import useLocalTxHistory from "../../hooks/useLocalTxHistory";
 
@@ -26,6 +28,7 @@ export default function TransactionHistory() {
           label: "Completed",
         };
       case "pending_wallet_creation":
+      case "pending":
         return {
           color: "text-yellow-300",
           bg: "bg-yellow-500/10",
@@ -53,6 +56,74 @@ export default function TransactionHistory() {
     }
   };
 
+  const shortAddr = (a) => {
+    if (!a || typeof a !== "string") return "—";
+    return `${a.slice(0, 6)}…${a.slice(-4)}`;
+  };
+
+  const formatAmount = (v, decimals = 6) => {
+    if (v === null || v === undefined || v === "") return "—";
+    const n = Number(v);
+    if (Number.isNaN(n)) return String(v);
+    // per ETH spesso vuoi 4-6 decimali, per USDC 2
+    return n.toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: decimals,
+    });
+  };
+
+  const getTxTitle = (tx) => {
+    const t = String(tx.type || "").toUpperCase();
+
+    if (t === "SWAP_BUY_USDC" || (t.includes("BUY") && t.includes("USDC"))) {
+      const inAmt = formatAmount(tx.amountIn ?? tx.amount, 6);
+      const outAmt = tx.amountOut ? formatAmount(tx.amountOut, 2) : null;
+      return outAmt
+        ? `${inAmt} ETH → ${outAmt} USDC`
+        : `${inAmt} ETH → USDC`;
+    }
+
+    if (t === "SWAP_SELL_USDC" || (t.includes("SELL") && t.includes("USDC"))) {
+      const inAmt = formatAmount(tx.amountIn ?? tx.amount, 2);
+      const outAmt = tx.amountOut ? formatAmount(tx.amountOut, 6) : null;
+      return outAmt
+        ? `${inAmt} USDC → ${outAmt} ETH`
+        : `${inAmt} USDC → ETH`;
+    }
+
+    if (t === "TRANSFER_ETH") {
+      const inAmt = formatAmount(tx.amountIn ?? tx.amount, 6);
+      return `${inAmt} ETH → ${shortAddr(tx.recipient || tx.to)}`;
+    }
+
+    // Wallet created
+    if (t.includes("WALLET") && t.includes("CREATED")) {
+      return `Wallet created → ${shortAddr(tx.to || tx.recipient)}`;
+    }
+
+    // fallback generico
+    const amt = tx.amountIn ?? tx.amount ?? "—";
+    const asset = tx.assetIn ?? "ETH";
+    return `${formatAmount(amt, 6)} ${asset} → ${shortAddr(tx.recipient || tx.to)}`;
+  };
+
+  const getTxMeta = (tx) => {
+    const wallet = tx.wallet || tx.from;
+    const recipient = tx.recipient || tx.to;
+
+    const left = wallet ? `From: ${shortAddr(wallet)}` : null;
+    const right = recipient ? `To: ${shortAddr(recipient)}` : null;
+
+    return [left, right].filter(Boolean).join(" • ");
+  };
+
+  const getTypeIcon = (tx) => {
+    const t = String(tx.type || "").toUpperCase();
+    if (t.includes("SWAP")) return <ArrowLeftRight size={16} />;
+    if (t.includes("TRANSFER")) return <Send size={16} />;
+    return <Hammer size={16} />;
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -78,26 +149,35 @@ export default function TransactionHistory() {
               const s = getStatusStyle(tx.status);
               return (
                 <li
-                  key={i}
+                  key={tx.hash ? `${tx.hash}-${i}` : i}
                   className="flex items-center justify-between border-b border-[#2b2b3d] pb-2"
                 >
                   <div className="flex items-center gap-3">
                     <span
                       className={`inline-flex items-center justify-center w-8 h-8 rounded-md border ${s.border} ${s.bg} ${s.color}`}
+                      title={tx.type}
                     >
-                      {s.icon}
+                      {getTypeIcon(tx)}
                     </span>
+
                     <div>
-                      <p className="text-sm font-medium">
-                        {tx.amount} ETH → {tx.to.slice(0, 6)}…{tx.to.slice(-4)}
-                      </p>
+                      <p className="text-sm font-medium">{getTxTitle(tx)}</p>
                       <p className="text-xs text-gray-400">
                         {new Date(tx.timestamp).toLocaleString()}
+                        {getTxMeta(tx) ? ` • ${getTxMeta(tx)}` : ""}
                       </p>
+                      {tx.hash && tx.hash !== "N/A" && (
+                        <p className="text-[11px] text-gray-500 mt-0.5">
+                          {shortAddr(tx.hash)}
+                        </p>
+                      )}
                     </div>
                   </div>
+
                   <div className={`text-xs font-medium ${s.color}`}>
-                    {s.label}
+                    <span className="inline-flex items-center gap-1">
+                      {s.icon} {s.label}
+                    </span>
                   </div>
                 </li>
               );
