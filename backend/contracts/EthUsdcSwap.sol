@@ -9,8 +9,10 @@ contract EthUsdcSwap is ReentrancyGuard {
     IERC20 public immutable usdc;
     AggregatorV3Interface public immutable ethUsdFeed;
 
-    // USDC standard: 6 decimali
     uint8 public constant USDC_DECIMALS = 6;
+
+    event BoughtUSDC(address indexed payer, address indexed recipient, uint256 ethIn, uint256 usdcOut);
+    event SoldUSDC(address indexed seller, address indexed recipient, uint256 usdcIn, uint256 ethOut);
 
     constructor(address _usdc, address _ethUsdFeed) {
         require(_usdc != address(0), "USDC address is zero");
@@ -25,23 +27,36 @@ contract EthUsdcSwap is ReentrancyGuard {
         (, int256 answer,,,) = ethUsdFeed.latestRoundData();
         require(answer > 0, "Invalid price");
 
-        uint8 decimals = ethUsdFeed.decimals(); // es. 8 per la maggior parte dei feed
+        uint8 dec = ethUsdFeed.decimals();
 
-        // Normalizziamo sempre a 1e8
-        if (decimals == 8) {
-            return uint256(answer);
-        } else if (decimals > 8) {
-            return uint256(answer) / 10 ** (decimals - 8);
-        } else {
-            return uint256(answer) * 10 ** (8 - decimals);
-        }
+        if (dec == 8) return uint256(answer);
+        if (dec > 8) return uint256(answer) / (10 ** (dec - 8));
+        return uint256(answer) * (10 ** (8 - dec));
+    }
+
+    /// ✅ View: prezzo ETH/USD normalizzato a 1e8 (per grafico)
+    function getEthUsdPrice1e8() external view returns (uint256) {
+        return _getEthUsdPrice();
+    }
+
+    /// ✅ View: quote ETH->USDC (senza spostare fondi)
+    function quoteBuyUsdc(uint256 ethAmountWei) public view returns (uint256 amountUsdc) {
+        require(ethAmountWei > 0, "Zero ETH");
+        uint256 ethUsd = _getEthUsdPrice();               // 1 ETH in USD, 1e8
+        uint256 usdValue = (ethAmountWei * ethUsd) / 1e18; // USD, 1e8
+        amountUsdc = (usdValue * (10 ** USDC_DECIMALS)) / (10 ** 8);
+    }
+
+    /// ✅ View: quote USDC->ETH (senza spostare fondi)
+    function quoteSellUsdc(uint256 amountUsdc) public view returns (uint256 amountEth) {
+        require(amountUsdc > 0, "Zero USDC");
+        uint256 ethUsd = _getEthUsdPrice(); // 1e8
+
+        uint256 usdValue = (amountUsdc * (10 ** 8)) / (10 ** USDC_DECIMALS); // USD, 1e8
+        amountEth = (usdValue * 1e18) / ethUsd; // ETH, 1e18
     }
 
     // --------- BUY: ETH -> USDC ---------
-    // msg.value = ETH (18 decimali)
-    // 1 USDC = 1 USD
-    //
-    // recipient: chi riceve i token USDC
     function buyUsdc(address recipient)
         external
         payable
@@ -51,32 +66,18 @@ contract EthUsdcSwap is ReentrancyGuard {
         require(recipient != address(0), "Invalid recipient");
         require(msg.value > 0, "No ETH sent");
 
-        uint256 ethUsd = _getEthUsdPrice(); // 1 ETH in USD, scalato 1e8
-
-        // valore in USD (scalato 1e8):
-        // msg.value [wei] * ethUsd [USD * 1e8 / ETH] / 1e18 [wei/ETH]
-        uint256 usdValue = (msg.value * ethUsd) / 1e18;
-
-        // USDC ha 6 decimali → amountUsdc in 6 decimali
-        // usdValue è in 1e8 → convertiamo: * 1e6 / 1e8 = / 1e2
-        amountUsdc = (usdValue * (10 ** USDC_DECIMALS)) / (10 ** 8);
+        amountUsdc = quoteBuyUsdc(msg.value);
 
         require(amountUsdc > 0, "USDC amount is zero");
-        require(
-            usdc.balanceOf(address(this)) >= amountUsdc,
-            "Not enough USDC liquidity"
-        );
+        require(usdc.balanceOf(address(this)) >= amountUsdc, "Not enough USDC liquidity");
 
         bool ok = usdc.transfer(recipient, amountUsdc);
         require(ok, "USDC transfer failed");
+
+        emit BoughtUSDC(msg.sender, recipient, msg.value, amountUsdc);
     }
 
     // --------- SELL: USDC -> ETH ---------
-    // L’utente deve prima fare:
-    //    usdc.approve(address(this), amountUsdc)
-    //
-    // recipient: chi riceve l’ETH
-    // amountUsdc: quanti USDC (6 decimali) vendere
     function sellUsdc(address recipient, uint256 amountUsdc)
         external
         nonReentrant
@@ -85,33 +86,20 @@ contract EthUsdcSwap is ReentrancyGuard {
         require(recipient != address(0), "Invalid recipient");
         require(amountUsdc > 0, "Zero amount");
 
-        // 1) Sposta USDC dall'utente al contratto
         bool ok = usdc.transferFrom(msg.sender, address(this), amountUsdc);
         require(ok, "USDC transfer failed");
 
-        uint256 ethUsd = _getEthUsdPrice(); // 1 ETH in USD, 1e8
-
-        // 2) amountUsdc (6 decimali) -> USD (1e8)
-        //
-        // amountUsdc / 1e6 = USD
-        // USD * 1e8 = usdValue
-        uint256 usdValue = (amountUsdc * (10 ** 8)) / (10 ** USDC_DECIMALS);
-
-        // 3) USD (1e8) -> ETH (1e18)
-        //
-        // usdValue / 1e8 = USD
-        // ETH = USD / (price in USD/ETH)
-        // quindi: amountEth = usdValue * 1e18 / ethUsd
-        amountEth = (usdValue * 1e18) / ethUsd;
+        amountEth = quoteSellUsdc(amountUsdc);
 
         require(amountEth > 0, "ETH amount is zero");
         require(address(this).balance >= amountEth, "Not enough ETH liquidity");
 
         (bool sent, ) = payable(recipient).call{value: amountEth}("");
         require(sent, "ETH transfer failed");
+
+        emit SoldUSDC(msg.sender, recipient, amountUsdc, amountEth);
     }
 
-    // Permette di inviare ETH al contratto (es. per fornire liquidità)
     receive() external payable {}
 }
 

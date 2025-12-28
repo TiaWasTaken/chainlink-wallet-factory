@@ -1,17 +1,21 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.7;
+pragma solidity ^0.8.20;
 
 contract MockV3Aggregator {
-    uint8 public decimals;
-    int256 public latestAnswer;
+    uint8 private _decimals;
+    int256 private _latestAnswer;
 
-    constructor(uint8 _decimals, int256 _initialAnswer) {
-        decimals = _decimals;
-        latestAnswer = _initialAnswer;
+    constructor(uint8 decimals_, int256 initialAnswer_) {
+        _decimals = decimals_;
+        _latestAnswer = initialAnswer_;
     }
 
-    function updateAnswer(int256 _answer) public {
-        latestAnswer = _answer;
+    function updateAnswer(int256 answer_) external {
+        _latestAnswer = answer_;
+    }
+
+    function decimals() external view returns (uint8) {
+        return _decimals;
     }
 
     function latestRoundData()
@@ -25,11 +29,7 @@ contract MockV3Aggregator {
             uint80 answeredInRound
         )
     {
-        return (0, latestAnswer, 0, block.timestamp, 0);
-    }
-
-    function getDecimals() external view returns (uint8) {
-        return decimals;
+        return (0, _latestAnswer, 0, block.timestamp, 0);
     }
 }
 

@@ -5,26 +5,35 @@ import { ethers } from "ethers";
 import addresses from "../abi/addresses.json";
 import USDCMockArtifact from "../abi/USDCMock.json";
 import EthUsdcSwapArtifact from "../abi/EthUsdcSwap.json";
-import OraclePriceArtifact from "../abi/OraclePrice.json";
+import SmartWalletArtifact from "../abi/SmartWallet.json";
 
 const USDC_DECIMALS = 6;
+const SLIPPAGE_BPS = 100n; // 1%
 
-export function useSwap() {
+function applySlippageBps(amount, bps) {
+  return (amount * (10000n - bps)) / 10000n;
+}
+
+export function useSwap(activeWalletAddress) {
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
-  const [address, setAddress] = useState(null);
+  const [eoaAddress, setEoaAddress] = useState(null);
 
   const [usdc, setUsdc] = useState(null);
   const [swap, setSwap] = useState(null);
-  const [oracle, setOracle] = useState(null);
 
   const [ethBalance, setEthBalance] = useState(null);
   const [usdcBalance, setUsdcBalance] = useState(null);
   const [ethUsdPrice, setEthUsdPrice] = useState(null);
+  const [ethToUsdcRate, setEthToUsdcRate] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [txPending, setTxPending] = useState(false);
   const [error, setError] = useState(null);
+
+  const activeAddress = activeWalletAddress || eoaAddress;
+  const isSmartWallet =
+    !!activeAddress && !!eoaAddress && activeAddress.toLowerCase() !== eoaAddress.toLowerCase();
 
   // ---- init provider + contracts ----
   useEffect(() => {
@@ -53,21 +62,14 @@ export function useSwap() {
           _signer
         );
 
-        const oracleContract = new ethers.Contract(
-          addresses.OraclePrice,
-          OraclePriceArtifact.abi,
-          _signer
-        );
-
         setProvider(_provider);
         setSigner(_signer);
-        setAddress(userAddr);
+        setEoaAddress(userAddr);
         setUsdc(usdcContract);
         setSwap(swapContract);
-        setOracle(oracleContract);
       } catch (e) {
         console.error("useSwap init error:", e);
-        setError(e.message ?? "Init error");
+        setError(e?.message ?? "Init error");
       } finally {
         setLoading(false);
       }
@@ -76,106 +78,132 @@ export function useSwap() {
     init();
   }, []);
 
+  const getSmartWallet = useCallback(() => {
+    if (!signer || !activeAddress) return null;
+    return new ethers.Contract(activeAddress, SmartWalletArtifact.abi, signer);
+  }, [signer, activeAddress]);
+
   // ---- refresh balances + price ----
   const refresh = useCallback(async () => {
-    if (!provider || !address || !usdc || !oracle) return;
+    if (!provider || !activeAddress || !usdc || !swap) return;
 
     try {
       const [ethBal, usdcBalRaw] = await Promise.all([
-        provider.getBalance(address),
-        usdc.balanceOf(address),
+        provider.getBalance(activeAddress),
+        usdc.balanceOf(activeAddress),
       ]);
 
-      // ATTENZIONE: cambia il nome della funzione se nel tuo OraclePrice è diverso
-      // es. getLatestPrice(), getEthUsdPrice(), ecc.
-      const priceRaw = await oracle.getLatestPrice?.() ?? await oracle.getEthUsdPrice();
+      // price + rate (on chain quote)
+      const price1e8 = await swap.getEthUsdPrice1e8?.();
+      const oneEth = ethers.parseEther("1");
+      const rateUsdc = await swap.quoteBuyUsdc(oneEth);
 
       setEthBalance(ethBal);
       setUsdcBalance(usdcBalRaw);
-      // priceRaw è tipicamente un int con 8 decimali (1e8)
-      setEthUsdPrice(Number(priceRaw) / 1e8);
+
+      if (price1e8 !== undefined) setEthUsdPrice(Number(price1e8) / 1e8);
+      setEthToUsdcRate(Number(ethers.formatUnits(rateUsdc, 6)));
     } catch (e) {
       console.error("useSwap refresh error:", e);
-      setError(e.message ?? "Refresh error");
+      setError(e?.message ?? "Refresh error");
     }
-  }, [provider, address, usdc, oracle]);
+  }, [provider, activeAddress, usdc, swap]);
 
   useEffect(() => {
-    if (!provider || !address || !usdc || !oracle) return;
-
-    // primo refresh subito
+    if (!provider || !activeAddress || !usdc || !swap) return;
     refresh();
-
-    // poi ogni 3 secondi
     const id = setInterval(refresh, 3000);
     return () => clearInterval(id);
-  }, [provider, address, usdc, oracle, refresh]);
+  }, [provider, activeAddress, usdc, swap, refresh]);
 
-  // ---- actions: buy & sell ----
+  // ---- actions: buy & sell (wallet-centric) ----
   const buyUsdc = useCallback(
     async (ethAmount) => {
-      if (!swap || !signer || !address) return;
+      if (!swap || !signer || !eoaAddress || !activeAddress) return;
+
       try {
         setTxPending(true);
         setError(null);
 
-        const value = ethers.parseEther(ethAmount.toString());
+        const ethWei = ethers.parseEther(ethAmount.toString());
 
-        const tx = await swap.buyUsdc(address, { value });
-        await tx.wait();
+        const quotedUsdc = await swap.quoteBuyUsdc(ethWei);
+        const minUsdcOut = applySlippageBps(quotedUsdc, SLIPPAGE_BPS);
+
+        if (isSmartWallet) {
+          const wallet = getSmartWallet();
+          if (!wallet) throw new Error("SmartWallet not ready");
+          const tx = await wallet.swapEthToUsdc(ethWei, minUsdcOut);
+          await tx.wait();
+        } else {
+          const tx = await swap.buyUsdc(eoaAddress, { value: ethWei });
+          await tx.wait();
+        }
 
         await refresh();
       } catch (e) {
         console.error("buyUsdc error:", e);
-        setError(e.message ?? "buyUsdc failed");
+        setError(e?.shortMessage || e?.message || "buyUsdc failed");
       } finally {
         setTxPending(false);
       }
     },
-    [swap, signer, address, refresh]
+    [swap, signer, eoaAddress, activeAddress, isSmartWallet, getSmartWallet, refresh]
   );
 
   const sellUsdc = useCallback(
     async (usdcAmount) => {
-      if (!swap || !usdc || !signer || !address) return;
+      if (!swap || !usdc || !signer || !eoaAddress || !activeAddress) return;
+
       try {
         setTxPending(true);
         setError(null);
 
-        const amount = ethers.parseUnits(
-          usdcAmount.toString(),
-          USDC_DECIMALS
-        );
+        const amount = ethers.parseUnits(usdcAmount.toString(), USDC_DECIMALS);
 
-        // Approve prima
-        const approveTx = await usdc.approve(await swap.getAddress(), amount);
-        await approveTx.wait();
+        const quotedEth = await swap.quoteSellUsdc(amount);
+        const minEthOut = applySlippageBps(quotedEth, SLIPPAGE_BPS);
 
-        // Poi sell
-        const sellTx = await swap.sellUsdc(address, amount);
-        await sellTx.wait();
+        if (isSmartWallet) {
+          const wallet = getSmartWallet();
+          if (!wallet) throw new Error("SmartWallet not ready");
+          const tx = await wallet.swapUsdcToEth(amount, minEthOut);
+          await tx.wait();
+        } else {
+          const approveTx = await usdc.approve(await swap.getAddress(), amount);
+          await approveTx.wait();
+          const sellTx = await swap.sellUsdc(eoaAddress, amount);
+          await sellTx.wait();
+        }
 
         await refresh();
       } catch (e) {
         console.error("sellUsdc error:", e);
-        setError(e.message ?? "sellUsdc failed");
+        setError(e?.shortMessage || e?.message || "sellUsdc failed");
       } finally {
         setTxPending(false);
       }
     },
-    [swap, usdc, signer, address, refresh]
+    [swap, usdc, signer, eoaAddress, activeAddress, isSmartWallet, getSmartWallet, refresh]
   );
 
   return {
     loading,
     txPending,
     error,
-    address,
+
+    eoaAddress,
+    activeAddress,
+    isSmartWallet,
+
     ethBalance,
     usdcBalance,
     ethUsdPrice,
+    ethToUsdcRate,
+
     buyUsdc,
     sellUsdc,
+    refresh,
   };
 }
 

@@ -7,7 +7,7 @@ async function main() {
   console.log("Deployer:", deployer.address);
 
   // ------------------------
-  // 1) MockToken (già esistente)
+  // 1) MockToken (se ti serve ancora per altri test)
   // ------------------------
   const Token = await ethers.getContractFactory("MockToken");
   const mockToken = await Token.deploy(ethers.parseEther("1000000"));
@@ -26,7 +26,7 @@ async function main() {
   console.log("MockV3Aggregator:", mockAggregator.target);
 
   // ------------------------
-  // 3) PriceConsumerV3
+  // 3) PriceConsumerV3 (se ti serve nel frontend)
   // ------------------------
   const PriceConsumer = await ethers.getContractFactory("PriceConsumerV3");
   const priceConsumer = await PriceConsumer.deploy();
@@ -37,7 +37,7 @@ async function main() {
   await txSetFeed.wait();
 
   // ------------------------
-  // 4) OraclePrice (wrapper tuo)
+  // 4) OraclePrice (wrapper)
   // ------------------------
   const Oracle = await ethers.getContractFactory("OraclePrice");
   const oracle = await Oracle.deploy(mockAggregator.target);
@@ -45,15 +45,7 @@ async function main() {
   console.log("OraclePrice:", oracle.target);
 
   // ------------------------
-  // 5) WalletFactory
-  // ------------------------
-  const Factory = await ethers.getContractFactory("WalletFactory");
-  const walletFactory = await Factory.deploy();
-  await walletFactory.waitForDeployment();
-  console.log("WalletFactory:", walletFactory.target);
-
-  // ------------------------
-  // 6) USDCMock (nuovo ERC20 6 decimali)
+  // 5) USDCMock (ERC20 6 decimali)
   // ------------------------
   const USDCMock = await ethers.getContractFactory("USDCMock");
   const usdcMock = await USDCMock.deploy();
@@ -61,8 +53,7 @@ async function main() {
   console.log("USDCMock:", usdcMock.target);
 
   // ------------------------
-  // 7) EthUsdcSwap (nuovo contratto di swap)
-  //    usa: USDCMock + MockV3Aggregator (ETH/USD)
+  // 6) EthUsdcSwap (USDCMock + Feed)
   // ------------------------
   const EthUsdcSwap = await ethers.getContractFactory("EthUsdcSwap");
   const ethUsdcSwap = await EthUsdcSwap.deploy(
@@ -73,16 +64,21 @@ async function main() {
   console.log("EthUsdcSwap:", ethUsdcSwap.target);
 
   // ------------------------
+  // 7) WalletFactory (ORA dopo swap/usdc)
+  // ------------------------
+  const Factory = await ethers.getContractFactory("WalletFactory");
+  const walletFactory = await Factory.deploy(ethUsdcSwap.target, usdcMock.target);
+  await walletFactory.waitForDeployment();
+  console.log("WalletFactory:", walletFactory.target);
+
+  // ------------------------
   // 8) Seed di liquidità per lo swap
   // ------------------------
-
-  // ✅ Mintiamo direttamente una quantità enorme di USDC allo swap
   const usdcLiquidity = ethers.parseUnits("1000000000", 6); // 1,000,000,000 USDC
   const txMint = await usdcMock.mint(ethUsdcSwap.target, usdcLiquidity);
   await txMint.wait();
   console.log("USDC liquidity minted to EthUsdcSwap");
 
-  // 100 ETH di liquidità in ETH sul contratto di swap
   const txEth = await deployer.sendTransaction({
     to: ethUsdcSwap.target,
     value: ethers.parseEther("100"),
@@ -102,21 +98,19 @@ async function main() {
 
   const contracts = [
     "WalletFactory",
+    "SmartWallet",       // ✅ NEW (serve al frontend per attach ai wallet)
     "MockToken",
     "PriceConsumerV3",
     "MockV3Aggregator",
     "OraclePrice",
-    "USDCMock",      // NEW
-    "EthUsdcSwap",   // NEW
+    "USDCMock",
+    "EthUsdcSwap",
   ];
 
   for (const name of contracts) {
     const filePath = path.join(backendAbiPath, `${name}.sol/${name}.json`);
     if (fs.existsSync(filePath)) {
-      fs.copyFileSync(
-        filePath,
-        path.join(frontendAbiPath, `${name}.json`)
-      );
+      fs.copyFileSync(filePath, path.join(frontendAbiPath, `${name}.json`));
     } else {
       console.warn(`ABI not found for ${name} at ${filePath}`);
     }
@@ -127,12 +121,13 @@ async function main() {
   // ------------------------
   const addresses = {
     WalletFactory: walletFactory.target,
+    SmartWallet: "deployed-per-wallet", // (solo informativo)
     MockToken: mockToken.target,
     PriceConsumerV3: priceConsumer.target,
     MockV3Aggregator: mockAggregator.target,
     OraclePrice: oracle.target,
-    USDCMock: usdcMock.target,        // NEW
-    EthUsdcSwap: ethUsdcSwap.target,  // NEW
+    USDCMock: usdcMock.target,
+    EthUsdcSwap: ethUsdcSwap.target,
   };
 
   fs.writeFileSync(

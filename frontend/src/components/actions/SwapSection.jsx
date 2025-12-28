@@ -7,19 +7,21 @@ import "chart.js/auto";
 import EthUsdcSwapABI from "../../abi/EthUsdcSwap.json";
 import USDCMockABI from "../../abi/USDCMock.json";
 import MockV3AggregatorABI from "../../abi/MockV3Aggregator.json";
+import SmartWalletABI from "../../abi/SmartWallet.json";
 import addresses from "../../abi/addresses.json";
+
 import useLocalTxHistory from "../../hooks/useLocalTxHistory";
 import useWalletFactory from "../../hooks/useWalletFactory";
 
-import {
-  Repeat,
-  Loader2,
-  DollarSign,
-  Wallet2,
-  TrendingUp,
-} from "lucide-react";
+import { Repeat, Loader2, DollarSign, Wallet2, TrendingUp } from "lucide-react";
 
 const USDC_DECIMALS = 6;
+const SLIPPAGE_BPS = 100n; // 1% = 100 bps
+
+function applySlippageBps(amount, bps) {
+  // minOut = amount * (10000 - bps) / 10000
+  return (amount * (10000n - bps)) / 10000n;
+}
 
 export default function SwapSection() {
   const [account, setAccount] = useState(null);
@@ -36,6 +38,7 @@ export default function SwapSection() {
   const [usdcBalance, setUsdcBalance] = useState(null);
 
   const [ethUsdPrice, setEthUsdPrice] = useState(null);
+  const [ethToUsdcRate, setEthToUsdcRate] = useState(null); // 1 ETH -> X USDC
   const [priceHistory, setPriceHistory] = useState([]);
 
   const [ethToSpend, setEthToSpend] = useState("");
@@ -44,7 +47,7 @@ export default function SwapSection() {
   const [txStatus, setTxStatus] = useState(null); // "buy-pending" | "sell-pending" | "success" | "error"
   const [errorMessage, setErrorMessage] = useState("");
 
-  // quale pannello mostrare: "buy" o "sell"
+  // "buy" | "sell"
   const [mode, setMode] = useState("buy");
 
   // wallet attivo (main account + smart wallets)
@@ -52,24 +55,20 @@ export default function SwapSection() {
 
   const { addTx } = useLocalTxHistory();
 
-  // smart wallets creati da questo account
   const {
     wallets: smartWallets,
-    balances: smartBalances, // non lo usiamo ancora ma può tornare utile
     refresh: refreshWallets,
   } = useWalletFactory(account || "");
 
-  // indirizzo effettivo su cui mostriamo i bilanci
   const activeAddress = useMemo(
     () => selectedWallet || account,
     [selectedWallet, account]
   );
 
-  // per ora SELL è permesso solo dal main account (per problemi di approve)
-  const sellingFromMain =
-    !!account &&
-    (!activeAddress ||
-      activeAddress.toLowerCase() === account.toLowerCase());
+  const isSmartWallet = useMemo(() => {
+    if (!account || !activeAddress) return false;
+    return activeAddress.toLowerCase() !== account.toLowerCase();
+  }, [account, activeAddress]);
 
   // -------- init provider + account ----------
   useEffect(() => {
@@ -84,7 +83,7 @@ export default function SwapSection() {
       });
       const acc = accounts[0];
       setAccount(acc);
-      setSelectedWallet(acc); // di default il wallet attivo è il main
+      setSelectedWallet(acc);
 
       const s = await prov.getSigner();
       setSigner(s);
@@ -138,6 +137,12 @@ export default function SwapSection() {
     setAggContract(agg);
   }, [provider, signer]);
 
+  // helper: attach SmartWallet at activeAddress
+  const getActiveSmartWallet = () => {
+    if (!signer || !activeAddress) return null;
+    return new ethers.Contract(activeAddress, SmartWalletABI.abi, signer);
+  };
+
   // -------- fetch balances ----------
   const refreshBalances = async () => {
     if (!provider || !activeAddress || !usdcContract) return;
@@ -148,9 +153,7 @@ export default function SwapSection() {
     ]);
 
     setEthBalance(Number(ethers.formatEther(ethBalRaw)));
-    setUsdcBalance(
-      Number(ethers.formatUnits(usdcBalRaw, USDC_DECIMALS))
-    );
+    setUsdcBalance(Number(ethers.formatUnits(usdcBalRaw, USDC_DECIMALS)));
   };
 
   // -------- fetch price (from Chainlink aggregator) ----------
@@ -158,30 +161,26 @@ export default function SwapSection() {
     if (!aggContract) return;
     try {
       const roundData = await aggContract.latestRoundData();
-      const answer = roundData[1]; // int256
+      const answer = roundData[1];
       const decimals = await aggContract.decimals();
 
       if (answer <= 0n) throw new Error("Invalid price");
 
       let normalized;
-      if (decimals === 8) {
-        normalized = Number(answer);
-      } else if (decimals > 8) {
-        normalized = Number(answer / 10n ** BigInt(decimals - 8));
-      } else {
-        normalized = Number(answer * 10n ** BigInt(8 - decimals));
-      }
+      if (decimals === 8) normalized = answer;
+      else if (decimals > 8) normalized = answer / 10n ** BigInt(decimals - 8);
+      else normalized = answer * 10n ** BigInt(8 - decimals);
 
-      const price = normalized / 1e8; // ETH/USD in $
+      const price = Number(normalized) / 1e8;
       setEthUsdPrice(price);
 
-      // storico (ultimi 30 punti)
       const now = new Date();
       const label = now.toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
       });
+
       setPriceHistory((prev) => {
         const updated = [...prev, { time: label, value: price }];
         return updated.slice(-30);
@@ -191,20 +190,34 @@ export default function SwapSection() {
     }
   };
 
+  // -------- fetch rate 1 ETH -> X USDC (from swap quote) ----------
+  const fetchRate = async () => {
+    if (!swapContract) return;
+    try {
+      const oneEth = ethers.parseEther("1");
+      const usdcOut = await swapContract.quoteBuyUsdc(oneEth); // 6 decimals
+      setEthToUsdcRate(Number(ethers.formatUnits(usdcOut, 6)));
+    } catch (e) {
+      console.error("Error fetching rate:", e);
+    }
+  };
+
   // -------- first load + interval (3s) ----------
   useEffect(() => {
     if (!aggContract || !activeAddress) return;
 
     (async () => {
-      await Promise.all([refreshBalances(), fetchPrice()]);
+      await Promise.all([refreshBalances(), fetchPrice(), fetchRate()]);
     })();
 
-    const id = setInterval(fetchPrice, 3000);
+    const id = setInterval(async () => {
+      await Promise.all([fetchPrice(), fetchRate()]);
+    }, 3000);
+
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aggContract, activeAddress]);
+  }, [aggContract, activeAddress, swapContract]);
 
-  // aggiorna i bilanci quando cambia il wallet attivo
   useEffect(() => {
     refreshBalances();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -237,40 +250,57 @@ export default function SwapSection() {
       setTxStatus("buy-pending");
       setErrorMessage("");
 
-      const value = ethers.parseEther(ethToSpend);
-      const recipient = activeAddress || account;
+      const ethWei = ethers.parseEther(ethToSpend);
 
-      const tx = await swapContract.buyUsdc(recipient, { value });
+      // quote -> minOut (1% slippage)
+      const quotedUsdc = await swapContract.quoteBuyUsdc(ethWei);
+      const minUsdcOut = applySlippageBps(quotedUsdc, SLIPPAGE_BPS);
+
+      let tx;
+      let to = null;
+
+      if (isSmartWallet) {
+        // ✅ paga il wallet: call SmartWallet.swapEthToUsdc(ethWei, minUsdcOut)
+        const wallet = getActiveSmartWallet();
+        if (!wallet) throw new Error("SmartWallet not ready");
+        tx = await wallet.swapEthToUsdc(ethWei, minUsdcOut);
+        to = activeAddress;
+      } else {
+        // Main EOA: paga l’EOA (ok per il main)
+        tx = await swapContract.buyUsdc(account, { value: ethWei });
+        to = addresses.EthUsdcSwap;
+      }
+
       const receipt = await tx.wait();
 
       addTx({
         hash: tx.hash,
         from: account,
-        to: addresses.EthUsdcSwap,
+        to,
         amount: ethToSpend,
         timestamp: new Date().toISOString(),
         status: "success",
-        type: "BUY_USDC",
-        recipient,
+        type: isSmartWallet ? "BUY_USDC_SMARTWALLET" : "BUY_USDC_MAIN",
+        recipient: activeAddress,
       });
 
-      console.log("Buy USDC receipt:", receipt.hash);
+      console.log("Buy receipt:", receipt.hash);
       setTxStatus("success");
       setEthToSpend("");
       await refreshBalances();
     } catch (err) {
-      console.error("Buy USDC failed:", err);
+      console.error("Buy failed:", err);
       setTxStatus("error");
       setErrorMessage(err?.shortMessage || err?.message || "Transaction failed");
 
       addTx({
         hash: err?.transaction?.hash || "N/A",
         from: account,
-        to: addresses.EthUsdcSwap,
+        to: isSmartWallet ? activeAddress : addresses.EthUsdcSwap,
         amount: ethToSpend,
         timestamp: new Date().toISOString(),
         status: "error",
-        type: "BUY_USDC",
+        type: isSmartWallet ? "BUY_USDC_SMARTWALLET" : "BUY_USDC_MAIN",
       });
     }
   };
@@ -281,57 +311,65 @@ export default function SwapSection() {
       alert("Insert a valid USDC amount");
       return;
     }
-    if (!sellingFromMain) {
-      alert("Selling from smart wallets is not supported yet. Use your main account.");
-      return;
-    }
 
     try {
       setTxStatus("sell-pending");
       setErrorMessage("");
 
-      const amount = ethers.parseUnits(usdcToSell, USDC_DECIMALS);
-      const recipient = activeAddress || account;
+      const amountUsdc = ethers.parseUnits(usdcToSell, USDC_DECIMALS);
 
-      // Approve from main account
-      const approveTx = await usdcContract.approve(
-        addresses.EthUsdcSwap,
-        amount
-      );
-      await approveTx.wait();
+      // quote -> minOut (1% slippage)
+      const quotedEth = await swapContract.quoteSellUsdc(amountUsdc);
+      const minEthOut = applySlippageBps(quotedEth, SLIPPAGE_BPS);
 
-      // Sell
-      const tx = await swapContract.sellUsdc(recipient, amount);
+      let tx;
+      let to = null;
+
+      if (isSmartWallet) {
+        // ✅ vende USDC del wallet e riceve ETH nel wallet
+        const wallet = getActiveSmartWallet();
+        if (!wallet) throw new Error("SmartWallet not ready");
+        tx = await wallet.swapUsdcToEth(amountUsdc, minEthOut);
+        to = activeAddress;
+      } else {
+        // main EOA: approve + sell sullo swap
+        const approveTx = await usdcContract.approve(addresses.EthUsdcSwap, amountUsdc);
+        await approveTx.wait();
+
+        tx = await swapContract.sellUsdc(account, amountUsdc);
+        to = addresses.EthUsdcSwap;
+      }
+
       const receipt = await tx.wait();
 
       addTx({
         hash: tx.hash,
         from: account,
-        to: addresses.EthUsdcSwap,
+        to,
         amount: usdcToSell,
         timestamp: new Date().toISOString(),
         status: "success",
-        type: "SELL_USDC",
-        recipient,
+        type: isSmartWallet ? "SELL_USDC_SMARTWALLET" : "SELL_USDC_MAIN",
+        recipient: activeAddress,
       });
 
-      console.log("Sell USDC receipt:", receipt.hash);
+      console.log("Sell receipt:", receipt.hash);
       setTxStatus("success");
       setUsdcToSell("");
       await refreshBalances();
     } catch (err) {
-      console.error("Sell USDC failed:", err);
+      console.error("Sell failed:", err);
       setTxStatus("error");
       setErrorMessage(err?.shortMessage || err?.message || "Transaction failed");
 
       addTx({
         hash: err?.transaction?.hash || "N/A",
         from: account,
-        to: addresses.EthUsdcSwap,
+        to: isSmartWallet ? activeAddress : addresses.EthUsdcSwap,
         amount: usdcToSell,
         timestamp: new Date().toISOString(),
         status: "error",
-        type: "SELL_USDC",
+        type: isSmartWallet ? "SELL_USDC_SMARTWALLET" : "SELL_USDC_MAIN",
       });
     }
   };
@@ -345,11 +383,16 @@ export default function SwapSection() {
         data: priceHistory.map((p) => p.value),
         borderColor: "#a855f7",
         borderWidth: 2,
-        tension: 0.4,
+        tension: 0.35,
         fill: true,
+        // ✅ FIX: gradient sicuro (se ctx non è pronto, fallback)
         backgroundColor: (ctx) => {
-          const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
-          gradient.addColorStop(0, "rgba(168,85,247,0.3)");
+          const chart = ctx?.chart;
+          const canvasCtx = chart?.ctx;
+          if (!canvasCtx) return "rgba(168,85,247,0.10)";
+
+          const gradient = canvasCtx.createLinearGradient(0, 0, 0, 260);
+          gradient.addColorStop(0, "rgba(168,85,247,0.30)");
           gradient.addColorStop(1, "rgba(168,85,247,0)");
           return gradient;
         },
@@ -360,7 +403,9 @@ export default function SwapSection() {
   };
 
   const chartOptions = {
-    animation: { duration: 800, easing: "easeInOutQuad" },
+    responsive: true,
+    maintainAspectRatio: false, // ✅ importante per altezza
+    animation: { duration: 400 },
     interaction: { intersect: false, mode: "index" },
     plugins: {
       legend: { display: false },
@@ -379,14 +424,8 @@ export default function SwapSection() {
       },
     },
     scales: {
-      x: {
-        ticks: { color: "#888", maxTicksLimit: 5 },
-        grid: { display: false },
-      },
-      y: {
-        ticks: { color: "#888" },
-        grid: { color: "#222" },
-      },
+      x: { ticks: { color: "#888", maxTicksLimit: 5 }, grid: { display: false } },
+      y: { ticks: { color: "#888" }, grid: { color: "#222" } },
     },
   };
 
@@ -401,7 +440,7 @@ export default function SwapSection() {
   return (
     <div className="bg-[#0b0b15] border border-[#1f1f2d] rounded-2xl p-6 w-full max-w-5xl mx-auto shadow-lg text-white">
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* LEFT: form + balances */}
+        {/* LEFT */}
         <div className="flex-1 flex flex-col">
           <div className="flex items-center gap-3 mb-3">
             <Repeat className="text-purple-400" />
@@ -423,16 +462,14 @@ export default function SwapSection() {
           </p>
 
           <div className="flex justify-between text-xs text-gray-400 mb-2">
-            <span className="bg-[#1f1f2d] px-2 py-1 rounded">
-              {network.name}
-            </span>
+            <span className="bg-[#1f1f2d] px-2 py-1 rounded">{network.name}</span>
             <span>Chain ID: {network.chainId}</span>
           </div>
 
-          {/* Select active wallet (main + smart wallets) */}
+          {/* Select active wallet */}
           <div className="mb-4">
             <label className="text-xs text-gray-400 mb-1 block">
-              Active wallet (balances + swap destination)
+              Active wallet (balances + swap source)
             </label>
             <select
               value={activeAddress || ""}
@@ -450,21 +487,24 @@ export default function SwapSection() {
                 </option>
               ))}
             </select>
+
+            {isSmartWallet && (
+              <p className="mt-2 text-[11px] text-green-400">
+                ✓ Swaps will spend funds from the selected smart wallet (not your main account).
+              </p>
+            )}
           </div>
 
           <div className="bg-[#141421] rounded-xl p-4 mb-4 text-sm text-gray-200">
             <div className="flex justify-between mb-1">
               <span>ETH Balance</span>
-              <span>
-                {ethBalance !== null ? ethBalance.toFixed(4) : "..."} ETH
-              </span>
+              <span>{ethBalance !== null ? ethBalance.toFixed(4) : "..."} ETH</span>
             </div>
             <div className="flex justify-between mb-1">
               <span>USDC Balance</span>
-              <span>
-                {usdcBalance !== null ? usdcBalance.toFixed(2) : "..."} USDC
-              </span>
+              <span>{usdcBalance !== null ? usdcBalance.toFixed(2) : "..."} USDC</span>
             </div>
+
             <div className="flex justify-between mt-2 text-xs text-gray-400 items-center gap-2">
               <span className="flex items-center gap-1">
                 <DollarSign size={12} className="text-purple-400" />
@@ -474,6 +514,16 @@ export default function SwapSection() {
                 {ethUsdPrice ? `${ethUsdPrice.toFixed(2)} $` : "..."}
               </span>
             </div>
+
+            <div className="flex justify-between mt-1 text-xs text-gray-400 items-center gap-2">
+              <span className="flex items-center gap-1">
+                <DollarSign size={12} className="text-purple-400" />
+                1 ETH =
+              </span>
+              <span className="font-semibold text-gray-100">
+                {ethToUsdcRate ? `${ethToUsdcRate.toFixed(2)} USDC` : "..."}
+              </span>
+            </div>
           </div>
 
           {/* Toggle BUY / SELL */}
@@ -481,9 +531,7 @@ export default function SwapSection() {
             <button
               onClick={() => setMode("buy")}
               className={`flex-1 py-1 rounded-md transition-all ${
-                mode === "buy"
-                  ? "bg-[#262648] text-white"
-                  : "text-gray-400 hover:text-gray-200"
+                mode === "buy" ? "bg-[#262648] text-white" : "text-gray-400 hover:text-gray-200"
               }`}
             >
               Buy USDC
@@ -491,9 +539,7 @@ export default function SwapSection() {
             <button
               onClick={() => setMode("sell")}
               className={`flex-1 py-1 rounded-md transition-all ${
-                mode === "sell"
-                  ? "bg-[#262648] text-white"
-                  : "text-gray-400 hover:text-gray-200"
+                mode === "sell" ? "bg-[#262648] text-white" : "text-gray-400 hover:text-gray-200"
               }`}
             >
               Sell USDC
@@ -515,10 +561,7 @@ export default function SwapSection() {
                   className="w-full px-4 py-2 bg-[#1b1b2a] border border-[#2b2b3d] rounded-lg focus:ring-2 focus:ring-purple-500 text-sm outline-none"
                 />
                 <p className="text-xs text-gray-400">
-                  You receive ≈{" "}
-                  <span className="text-gray-100">
-                    {estimatedUsdcOut()} USDC
-                  </span>
+                  You receive ≈ <span className="text-gray-100">{estimatedUsdcOut()} USDC</span>
                 </p>
                 <button
                   onClick={handleBuyUsdc}
@@ -558,20 +601,13 @@ export default function SwapSection() {
                   className="w-full px-4 py-2 bg-[#1b1b2a] border border-[#2b2b3d] rounded-lg focus:ring-2 focus:ring-purple-500 text-sm outline-none"
                 />
                 <p className="text-xs text-gray-400">
-                  You receive ≈{" "}
-                  <span className="text-gray-100">
-                    {estimatedEthOut()} ETH
-                  </span>
+                  You receive ≈ <span className="text-gray-100">{estimatedEthOut()} ETH</span>
                 </p>
                 <button
                   onClick={handleSellUsdc}
-                  disabled={
-                    txStatus === "sell-pending" ||
-                    !usdcToSell ||
-                    !sellingFromMain
-                  }
+                  disabled={txStatus === "sell-pending" || !usdcToSell}
                   className={`mt-1 w-full px-6 py-2 rounded-lg font-semibold shadow-sm transition-all duration-300 flex items-center justify-center gap-2 ${
-                    txStatus === "sell-pending" || !sellingFromMain
+                    txStatus === "sell-pending"
                       ? "bg-gray-500 cursor-not-allowed"
                       : "bg-gradient-to-r from-indigo-600 to-purple-500 hover:scale-105"
                   }`}
@@ -586,26 +622,16 @@ export default function SwapSection() {
                     </>
                   )}
                 </button>
-                {!sellingFromMain && (
-                  <p className="mt-2 text-[11px] text-yellow-400">
-                    Selling from smart wallets is not supported yet. Select your
-                    main account to sell.
-                  </p>
-                )}
               </div>
             </div>
           )}
 
           {/* status */}
           {txStatus === "success" && (
-            <p className="mt-3 text-sm text-green-400">
-              ✓ Transaction confirmed on-chain.
-            </p>
+            <p className="mt-3 text-sm text-green-400">✓ Transaction confirmed on-chain.</p>
           )}
           {txStatus === "error" && (
-            <p className="mt-3 text-sm text-red-400">
-              ⚠️ {errorMessage}
-            </p>
+            <p className="mt-3 text-sm text-red-400">⚠️ {errorMessage}</p>
           )}
         </div>
 
@@ -616,11 +642,13 @@ export default function SwapSection() {
               <TrendingUp size={14} className="text-purple-400" />
               ETH / USD (live)
             </h3>
-            <span className="text-xs text-gray-400">
-              Update every ~3s
-            </span>
+            <span className="text-xs text-gray-400">Update every ~3s</span>
           </div>
-          <Line data={chartData} options={chartOptions} />
+
+          {/* ✅ FIX: serve un’altezza, altrimenti in alcuni layout non si vede */}
+          <div style={{ height: 260 }}>
+            <Line data={chartData} options={chartOptions} />
+          </div>
         </div>
       </div>
     </div>

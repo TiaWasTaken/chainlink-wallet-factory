@@ -3,68 +3,105 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract SmartWallet is Ownable {
+interface IEthUsdcSwap {
+    function buyUsdc(address recipient) external payable returns (uint256 amountUsdc);
+    function sellUsdc(address recipient, uint256 amountUsdc) external returns (uint256 amountEth);
+
+    // quote helpers (nuovi)
+    function quoteBuyUsdc(uint256 ethAmountWei) external view returns (uint256 amountUsdc);
+    function quoteSellUsdc(uint256 amountUsdc) external view returns (uint256 amountEth);
+}
+
+contract SmartWallet is Ownable, ReentrancyGuard {
     address public factory;
-    uint256 public constant MOCK_EXCHANGE_RATE = 1000; // 1 ETH = 1000 token (mock)
+
+    IERC20 public usdc;
+    IEthUsdcSwap public swap;
 
     event Received(address indexed sender, uint256 amount);
     event Sent(address indexed recipient, uint256 amount);
-    event SwapEthForToken(address indexed user, address token, uint256 ethAmount, uint256 tokenAmount);
-    event SwapTokenForEth(address indexed user, address token, uint256 tokenAmount, uint256 ethAmount);
+    event TokenSent(address indexed token, address indexed to, uint256 amount);
 
-    constructor(address _owner) Ownable(_owner) {
+    event SwapEthToUsdc(address indexed wallet, uint256 ethIn, uint256 usdcOut);
+    event SwapUsdcToEth(address indexed wallet, uint256 usdcIn, uint256 ethOut);
+
+    constructor(address _owner, address _swap, address _usdc) Ownable(_owner) {
+        require(_swap != address(0), "swap zero");
+        require(_usdc != address(0), "usdc zero");
+
         factory = msg.sender;
+        swap = IEthUsdcSwap(_swap);
+        usdc = IERC20(_usdc);
     }
 
     receive() external payable {
         emit Received(msg.sender, msg.value);
     }
 
-    function sendETH(address payable recipient, uint256 amount) external onlyOwner {
+    function getBalance() external view returns (uint256) {
+        return address(this).balance;
+    }
+
+    function getTokenBalance(address token) external view returns (uint256) {
+        return IERC20(token).balanceOf(address(this));
+    }
+
+    function sendETH(address payable recipient, uint256 amount) external onlyOwner nonReentrant {
         require(address(this).balance >= amount, "Saldo insufficiente");
         (bool ok, ) = recipient.call{value: amount}("");
         require(ok, "Trasferimento ETH fallito");
         emit Sent(recipient, amount);
     }
 
-    function getBalance() external view returns (uint256) {
-        return address(this).balance;
+    function sendToken(address token, address to, uint256 amount) external onlyOwner nonReentrant {
+        require(token != address(0) && to != address(0), "address zero");
+        bool ok = IERC20(token).transfer(to, amount);
+        require(ok, "Token transfer failed");
+        emit TokenSent(token, to, amount);
     }
 
-    // MOCK swap: ETH -> Token
-    function swapETHForTokens(address token, uint256 ethAmount) external onlyOwner {
-        require(token != address(0), "Token non valido");
-        require(address(this).balance >= ethAmount, "Saldo ETH insufficiente");
+    /// ✅ ETH -> USDC con slippage protection
+    /// minUsdcOut è in 6 decimali
+    function swapEthToUsdc(uint256 ethAmountWei, uint256 minUsdcOut)
+        external
+        onlyOwner
+        nonReentrant
+        returns (uint256 usdcOut)
+    {
+        require(ethAmountWei > 0, "Zero amount");
+        require(address(this).balance >= ethAmountWei, "ETH insufficiente");
 
-        uint256 tokenAmount = ethAmount * MOCK_EXCHANGE_RATE;
-        IERC20(token).transfer(msg.sender, tokenAmount);
+        // quote on-chain
+        uint256 quoted = swap.quoteBuyUsdc(ethAmountWei);
+        require(quoted >= minUsdcOut, "Slippage: minUsdcOut");
 
-        // ETH verso address(0) per simulare il costo
-        (bool ok, ) = payable(address(0)).call{value: ethAmount}("");
-        require(ok, "Burn ETH mock fallito");
-
-        emit SwapEthForToken(msg.sender, token, ethAmount, tokenAmount);
+        usdcOut = swap.buyUsdc{value: ethAmountWei}(address(this));
+        require(usdcOut >= minUsdcOut, "Slippage: out");
+        emit SwapEthToUsdc(address(this), ethAmountWei, usdcOut);
     }
 
-    // MOCK swap: Token -> ETH
-    function swapTokensForETH(address token, uint256 tokenAmount) external onlyOwner {
-        require(token != address(0), "Token non valido");
+    /// ✅ USDC -> ETH con slippage protection
+    /// minEthOut è in wei
+    function swapUsdcToEth(uint256 usdcAmount, uint256 minEthOut)
+        external
+        onlyOwner
+        nonReentrant
+        returns (uint256 ethOut)
+    {
+        require(usdcAmount > 0, "Zero amount");
+        require(usdc.balanceOf(address(this)) >= usdcAmount, "USDC insufficiente");
 
-        uint256 ethAmount = tokenAmount / MOCK_EXCHANGE_RATE;
-        require(address(this).balance >= ethAmount, "ETH insufficiente nel wallet");
+        uint256 quoted = swap.quoteSellUsdc(usdcAmount);
+        require(quoted >= minEthOut, "Slippage: minEthOut");
 
-        bool received = IERC20(token).transferFrom(msg.sender, address(this), tokenAmount);
-        require(received, "Transfer token fallito");
+        bool ok = usdc.approve(address(swap), usdcAmount);
+        require(ok, "Approve failed");
 
-        (bool ok, ) = payable(msg.sender).call{value: ethAmount}("");
-        require(ok, "Trasferimento ETH fallito");
-
-        emit SwapTokenForEth(msg.sender, token, tokenAmount, ethAmount);
-    }
-
-    function getTokenBalance(address token) external view returns (uint256) {
-        return IERC20(token).balanceOf(address(this));
+        ethOut = swap.sellUsdc(address(this), usdcAmount);
+        require(ethOut >= minEthOut, "Slippage: out");
+        emit SwapUsdcToEth(address(this), usdcAmount, ethOut);
     }
 }
 
