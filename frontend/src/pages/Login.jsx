@@ -1,44 +1,45 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 
+import { useWeb3Modal } from "@web3modal/wagmi/react";
+import { useAccount, useChainId } from "wagmi";
+
 export default function Login() {
-  const [account, setAccount] = useState(null);
+  const navigate = useNavigate();
+  const { open } = useWeb3Modal();
+
+  // wagmi status evita il "flash" quando auto-ripristina la sessione
+  const { address, isConnected, status } = useAccount();
+  const chainId = useChainId();
+
   const [error, setError] = useState("");
 
-  async function connectWallet() {
-    if (typeof window === "undefined" || !window.ethereum) {
-      setError("Please install MetaMask to continue.");
-      return;
+  const isHardhat = useMemo(() => chainId === 31337, [chainId]);
+
+  useEffect(() => {
+    if (isConnected) {
+      navigate("/home", { replace: true });
     }
+  }, [isConnected, navigate]);
 
+  async function connectWallet() {
     try {
-      localStorage.clear();
-      sessionStorage.clear();
-
-      await window.ethereum.request({
-        method: "wallet_requestPermissions",
-        params: [{ eth_accounts: {} }],
-      });
-
-      const accounts = await window.ethereum.request({
-        method: "eth_requestAccounts",
-      });
-
-      if (!accounts || accounts.length === 0) {
-        setError("No account selected.");
-        return;
-      }
-
-      setAccount(accounts[0]);
       setError("");
-
-      setTimeout(() => {
-        window.location.href = "/home";
-      }, 1000);
+      await open();
     } catch (err) {
       console.error(err);
       setError("Connection failed or denied.");
     }
+  }
+
+  // ✅ Evita che la Login lampeggi per 1 secondo mentre wagmi "reconnecting"
+  if (status === "reconnecting" || status === "connecting") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0e001a] via-[#15002b] to-[#220044] text-gray-100">
+        <div className="text-sm text-gray-300">Restoring session…</div>
+      </div>
+    );
   }
 
   return (
@@ -62,8 +63,8 @@ export default function Login() {
 
       <p className="text-gray-400 mb-8 text-center max-w-md">
         Access your dashboard securely with{" "}
-        <span className="text-purple-400 font-semibold">MetaMask</span>.
-        Your gateway to the decentralized web.
+        <span className="text-purple-400 font-semibold">MetaMask</span>. Your
+        gateway to the decentralized web.
       </p>
 
       <button
@@ -75,14 +76,13 @@ export default function Login() {
           alt="MetaMask Icon"
           className="w-6 h-6 relative mr-2 -ml-2 z-10"
         />
-        <span className="relative z-10">Connect MetaMask</span>
+        <span className="relative z-10">Connect Wallet</span>
         <div className="absolute inset-0 bg-gradient-to-r from-pink-400 to-purple-600 opacity-0 group-hover:opacity-30 blur-lg transition-opacity duration-300" />
       </button>
 
-
-      {account && (
+      {isConnected && address && (
         <p className="mt-6 text-sm text-green-400 font-medium">
-          ✅ Connected: {account.slice(0, 6)}...{account.slice(-4)}
+          ✅ Connected: {address.slice(0, 6)}...{address.slice(-4)}
         </p>
       )}
 
@@ -94,8 +94,12 @@ export default function Login() {
 
       <p className="text-sm text-gray-500 mt-8 text-center max-w-md mb-6">
         Having issues? Ensure your{" "}
-        <span className="text-purple-400 font-medium">Hardhat node</span> is running and{" "}
-        <span className="text-purple-400 font-medium">Localhost</span> network is selected.
+        <span className="text-purple-400 font-medium">Hardhat node</span> is
+        running and{" "}
+        <span className="text-purple-400 font-medium">
+          {isHardhat ? "Hardhat" : "the correct network"}
+        </span>{" "}
+        is selected.
       </p>
 
       <style jsx>{`

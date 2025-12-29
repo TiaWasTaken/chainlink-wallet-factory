@@ -6,10 +6,16 @@ import App from "./App.jsx";
 import { WagmiProvider } from "wagmi";
 import { wagmiConfig } from "./web3/walletConnect.js";
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClient = new QueryClient();
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <WagmiProvider config={wagmiConfig}>
-      <App />
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
     </WagmiProvider>
   </StrictMode>
 );

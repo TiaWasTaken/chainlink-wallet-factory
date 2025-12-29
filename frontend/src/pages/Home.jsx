@@ -1,5 +1,7 @@
 // src/pages/Home.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
+import { useAccount } from "wagmi";
+
 import Navbar from "../components/Navbar";
 import Hero from "../components/Hero";
 import About from "../components/About";
@@ -7,99 +9,48 @@ import EtherMenu from "../components/EtherMenu";
 import Footer from "../components/Footer";
 
 export default function Home() {
-  const [account, setAccount] = useState(null);
+  const { isConnected } = useAccount();
 
+  // Route guard extra (oltre a quella in App.jsx): se perdi connessione, torni al login
   useEffect(() => {
-    async function loadAccount() {
-      if (window.ethereum) {
-        try {
-          const accounts = await window.ethereum.request({
-            method: "eth_accounts",
-          });
-          if (accounts.length > 0) {
-            setAccount(accounts[0]);
-          } else {
-            window.location.replace("/");
-          }
-        } catch (e) {
-          console.error(e);
-          window.location.replace("/");
-        }
-      } else {
-        window.location.replace("/");
-      }
-    }
-
-    loadAccount();
-
-    const handleAccountsChanged = (accounts) => {
-      if (accounts.length > 0) {
-        console.log("Account switched:", accounts[0]);
-        setAccount(accounts[0]);
-      } else {
-        console.log("No account found, redirecting...");
-        setAccount(null);
-        window.location.replace("/");
-      }
-    };
-
-    window.ethereum?.on("accountsChanged", handleAccountsChanged);
-    return () => {
-      window.ethereum?.removeListener("accountsChanged", handleAccountsChanged);
-    };
-  }, []);
-
-  function disconnectWallet() {
-    try {
-      setAccount(null);
-      localStorage.clear();
-      sessionStorage.clear();
-      console.log("Disconnected & cache cleared");
-      window.location.replace("/");
-    } catch (err) {
-      console.error("Disconnect error:", err);
+    if (!isConnected) {
       window.location.replace("/");
     }
-  }
+  }, [isConnected]);
 
-  <div
-    id="toast"
-    className="fixed top-6 right-6 z-50 px-4 py-2 bg-[#151520]/80 text-gray-100 rounded-lg shadow-lg border border-[#2b2b3d] opacity-0 transition-opacity duration-500"
-  ></div>
-
+  // Toast listener (ora il div esiste davvero nel DOM)
   useEffect(() => {
     const el = document.getElementById("toast");
+    if (!el) return;
+
     const handler = (e) => {
       el.textContent = e.detail;
       el.style.opacity = "1";
       setTimeout(() => (el.style.opacity = "0"), 2500);
     };
+
     window.addEventListener("toast", handler);
     return () => window.removeEventListener("toast", handler);
   }, []);
 
-
   return (
     <div className="min-h-screen bg-[#060816] text-gray-200 overflow-x-hidden">
+      {/* ✅ Toast mounted */}
+      <div
+        id="toast"
+        className="fixed top-6 right-6 z-50 px-4 py-2 bg-[#151520]/80 text-gray-100 rounded-lg shadow-lg border border-[#2b2b3d] opacity-0 transition-opacity duration-500"
+      />
 
-      <Navbar variant="home" account={account} setAccount={setAccount} />
+      {/* ✅ Navbar ora prende account da wagmi internamente */}
+      <Navbar variant="home" />
 
       <Hero />
-
       <About />
 
-      <EtherMenu account={account} />
+      {/* ✅ EtherMenu: passo successivo = togliere prop account e farlo usare wagmi */}
+      <EtherMenu />
 
       <Footer />
-
-      {/* <div className="flex justify-center py-10">
-        <button
-          onClick={disconnectWallet}
-          className="px-6 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-semibold rounded-lg shadow-sm hover:scale-105 transition-transform duration-200"
-        >
-          Disconnect
-        </button>
-      </div> */}
     </div>
   );
 }

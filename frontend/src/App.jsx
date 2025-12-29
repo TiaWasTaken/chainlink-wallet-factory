@@ -14,14 +14,17 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route
-          path="/"
-          element={<Login account={account} setAccount={setAccount} />}
-        />
+        <Route path="/" element={<Login account={account} setAccount={setAccount} />} />
 
         <Route
           path="/home"
-          element={<Home account={account} setAccount={setAccount} />}
+          element={
+            account ? (
+              <Home account={account} setAccount={setAccount} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
         />
 
         <Route path="*" element={<Navigate to="/" replace />} />
