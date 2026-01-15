@@ -9,6 +9,17 @@ const FEEDS = {
   },
 };
 
+function readJsonSafe(filePath, fallback) {
+  try {
+    if (!fs.existsSync(filePath)) return fallback;
+    const raw = fs.readFileSync(filePath, "utf8");
+    return JSON.parse(raw);
+  } catch (e) {
+    console.warn("Failed to read JSON:", filePath, e.message);
+    return fallback;
+  }
+}
+
 async function main() {
   const [deployer] = await ethers.getSigners();
   const networkName = hre.network.name;
@@ -18,7 +29,7 @@ async function main() {
   console.log("Deployer:", deployer.address);
 
   // ------------------------
-  // 1) MockToken (solo per test locali; su Sepolia lo deployiamo comunque se ti serve)
+  // 1) MockToken
   // ------------------------
   const Token = await ethers.getContractFactory("MockToken");
   const mockToken = await Token.deploy(ethers.parseEther("1000000"));
@@ -26,7 +37,7 @@ async function main() {
   console.log("MockToken:", mockToken.target);
 
   // ------------------------
-  // 2) Feed ETH/USD: mock su hardhat, vero su Sepolia
+  // 2) Feed ETH/USD: mock su locale, vero su Sepolia
   // ------------------------
   let ethUsdFeedAddress;
 
@@ -44,8 +55,7 @@ async function main() {
   }
 
   // ------------------------
-  // 3) PriceConsumerV3 (facoltativo: utile se lo usi nel frontend)
-  // Su Sepolia lo puntiamo al feed vero.
+  // 3) PriceConsumerV3
   // ------------------------
   const PriceConsumer = await ethers.getContractFactory("PriceConsumerV3");
   const priceConsumer = await PriceConsumer.deploy();
@@ -56,9 +66,7 @@ async function main() {
   await txSetFeed.wait();
 
   // ------------------------
-  // 4) OraclePrice
-  // IMPORTANTE: il tuo OraclePrice.sol attuale è basato sul mock.
-  // Quindi lo deployiamo SOLO in locale, non su Sepolia.
+  // 4) OraclePrice (solo locale)
   // ------------------------
   let oracleAddress = null;
   if (networkName !== "sepolia") {
@@ -73,7 +81,6 @@ async function main() {
 
   // ------------------------
   // 5) USDCMock
-  // Su Sepolia rimane un token mock tuo (ok per demo).
   // ------------------------
   const USDCMock = await ethers.getContractFactory("USDCMock");
   const usdcMock = await USDCMock.deploy();
@@ -81,7 +88,7 @@ async function main() {
   console.log("USDCMock:", usdcMock.target);
 
   // ------------------------
-  // 6) EthUsdcSwap (USDCMock + Feed)
+  // 6) EthUsdcSwap
   // ------------------------
   const EthUsdcSwap = await ethers.getContractFactory("EthUsdcSwap");
   const ethUsdcSwap = await EthUsdcSwap.deploy(usdcMock.target, ethUsdFeedAddress);
@@ -98,14 +105,13 @@ async function main() {
 
   // ------------------------
   // 8) Seed liquidità swap
-  // Su Sepolia NON mandiamo 100 ETH: riduciamo.
   // ------------------------
   const usdcLiquidity = ethers.parseUnits("1000000", 6); // 1,000,000 USDC
   const txMint = await usdcMock.mint(ethUsdcSwap.target, usdcLiquidity);
   await txMint.wait();
   console.log("USDC liquidity minted to EthUsdcSwap");
 
-  const ethLiquidity = networkName === "sepolia" ? "0.01" : "100";
+  const ethLiquidity = networkName === "sepolia" ? "0.001" : "100";
   const txEth = await deployer.sendTransaction({
     to: ethUsdcSwap.target,
     value: ethers.parseEther(ethLiquidity),
@@ -132,7 +138,6 @@ async function main() {
     "EthUsdcSwap",
   ];
 
-  // In locale copiamo anche i mock
   if (networkName !== "sepolia") {
     contracts.push("MockV3Aggregator", "OraclePrice");
   }
@@ -147,9 +152,9 @@ async function main() {
   }
 
   // ------------------------
-  // 10) Salva addresses per chainId (fondamentale per multi-chain)
+  // 10) Addresses payload per questa chain
   // ------------------------
-  const addresses = {
+  const addressesForThisChain = {
     chainId,
     EthUsdFeed: ethUsdFeedAddress,
     WalletFactory: walletFactory.target,
@@ -161,16 +166,27 @@ async function main() {
     EthUsdcSwap: ethUsdcSwap.target,
   };
 
-  const outPath = path.join(frontendAbiPath, `addresses.${chainId}.json`);
-  fs.writeFileSync(outPath, JSON.stringify(addresses, null, 2));
-  console.log("Addresses written to:", outPath);
+  // 10a) Salva anche un file addresses.<chainId>.json (utile debug)
+  const outPerChain = path.join(frontendAbiPath, `addresses.${chainId}.json`);
+  fs.writeFileSync(outPerChain, JSON.stringify(addressesForThisChain, null, 2));
+  console.log("Addresses written to:", outPerChain);
 
-  // Per retro-compatibilità: aggiorna anche addresses.json con l’ultima rete deployata
-  fs.writeFileSync(
-    path.join(frontendAbiPath, "addresses.json"),
-    JSON.stringify(addresses, null, 2)
-  );
-  console.log("Also updated frontend/src/abi/addresses.json");
+  // 10b) Aggiorna addresses.json come mapping multi-chain (NON sovrascrivere tutto)
+  const mappingPath = path.join(frontendAbiPath, "addresses.json");
+  const existingMapping = readJsonSafe(mappingPath, {});
+
+  // Se il file era nel vecchio formato (contiene chainId “piatto”), lo resettiamo in mapping
+  const isLegacyFlat =
+    existingMapping &&
+    typeof existingMapping === "object" &&
+    Object.prototype.hasOwnProperty.call(existingMapping, "chainId");
+
+  const nextMapping = isLegacyFlat ? {} : existingMapping;
+
+  nextMapping[String(chainId)] = addressesForThisChain;
+
+  fs.writeFileSync(mappingPath, JSON.stringify(nextMapping, null, 2));
+  console.log("Updated frontend/src/abi/addresses.json (multi-chain mapping)");
 }
 
 main().catch((error) => {

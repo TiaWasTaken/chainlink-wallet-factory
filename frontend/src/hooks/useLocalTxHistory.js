@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ethers } from "ethers";
 
-const STORAGE_KEY = "tx_history";
 const MAX_ITEMS = 10;
 
 // --- helpers ---
@@ -39,7 +39,6 @@ const normalizeTx = (tx) => {
     };
   }
 
-  // deduzione asset/flow dai type storici che usi già (BUY_USDC / SELL_USDC ecc)
   const tUpper = String(type).toUpperCase();
 
   if (tUpper.includes("BUY") && tUpper.includes("USDC")) {
@@ -55,7 +54,7 @@ const normalizeTx = (tx) => {
       assetIn: "ETH",
       amountIn: tx.amount ?? null,
       assetOut: "USDC",
-      amountOut: tx.amountOut ?? null, // se non c'è, rimane null
+      amountOut: tx.amountOut ?? null,
     };
   }
 
@@ -76,7 +75,6 @@ const normalizeTx = (tx) => {
     };
   }
 
-  // default: trattiamo come trasferimento ETH (vecchio comportamento)
   return {
     hash: tx.hash ?? "N/A",
     timestamp: tx.timestamp ?? new Date().toISOString(),
@@ -93,9 +91,58 @@ const normalizeTx = (tx) => {
   };
 };
 
-export default function useLocalTxHistory() {
+// Determina la key storage in base a chainId + account.
+// Se non hai account, mettiamo "anon" (ma idealmente sempre account).
+const makeKey = (chainId, account) => {
+  const a = (account || "anon").toLowerCase();
+  return `tx_history:${String(chainId)}:${a}`;
+};
+
+export default function useLocalTxHistory(account) {
+  const [chainId, setChainId] = useState(null);
+
+  // Leggi chainId live (e aggiorna su chainChanged)
+  useEffect(() => {
+    let alive = true;
+
+    const readChain = async () => {
+      if (!window.ethereum) return;
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const net = await provider.getNetwork();
+        if (!alive) return;
+        setChainId(Number(net.chainId));
+      } catch {
+        // noop
+      }
+    };
+
+    readChain();
+
+    if (window.ethereum) {
+      const onChainChanged = () => {
+        // dopo chain change, rileggo
+        readChain();
+      };
+      window.ethereum.on("chainChanged", onChainChanged);
+      return () => {
+        alive = false;
+        window.ethereum.removeListener("chainChanged", onChainChanged);
+      };
+    }
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const storageKey = useMemo(() => {
+    // se chainId non c'è ancora, usiamo "unknown" per non buttare errori
+    return makeKey(chainId ?? "unknown", account);
+  }, [chainId, account]);
+
   const [history, setHistory] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(storageKey);
     const parsed = safeJsonParse(saved, []);
     const normalized = Array.isArray(parsed)
       ? parsed.map(normalizeTx).filter(Boolean)
@@ -103,52 +150,65 @@ export default function useLocalTxHistory() {
     return normalized;
   });
 
-  // persist + migrate once
+  // Quando cambia storageKey (account o chain), ricarica history corretta
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(0, MAX_ITEMS)));
-  }, [history]);
+    const saved = localStorage.getItem(storageKey);
+    const parsed = safeJsonParse(saved, []);
+    const normalized = Array.isArray(parsed)
+      ? parsed.map(normalizeTx).filter(Boolean)
+      : [];
+    setHistory(normalized);
+  }, [storageKey]);
 
-  // Aggiunge una transazione, rimuove le pending duplicate e mantiene max 10
-  const addTx = (tx) => {
-    const nTx = normalizeTx(tx);
-    if (!nTx) return;
+  // Persist
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify(history.slice(0, MAX_ITEMS)));
+  }, [history, storageKey]);
 
-    setHistory((prev) => {
-      let updated = [...prev];
+  // Aggiunge una transazione, rimuove pending duplicate e mantiene max 10
+  const addTx = useCallback(
+    (tx) => {
+      const nTx = normalizeTx(tx);
+      if (!nTx) return;
 
-      // Se arriva una transazione di successo, rimuovi pending duplicate:
-      // - stesso hash (se esiste)
-      // - oppure stesso tipo + recipient (fallback)
-      if (
-        nTx.status === "wallet_created" ||
-        nTx.status === "wallet_created_event" ||
-        nTx.status === "success"
-      ) {
-        updated = updated.filter((t) => {
-          const isPending = String(t.status || "").startsWith("pending");
-          if (!isPending) return true;
+      setHistory((prev) => {
+        let updated = [...prev];
 
-          const sameHash =
-            t.hash && nTx.hash && t.hash !== "N/A" && t.hash === nTx.hash;
+        // Se arriva una transazione di successo, rimuovi pending duplicate:
+        // - stesso hash (se esiste)
+        // - oppure stesso tipo + recipient (fallback)
+        if (
+          nTx.status === "wallet_created" ||
+          nTx.status === "wallet_created_event" ||
+          nTx.status === "success"
+        ) {
+          updated = updated.filter((t) => {
+            const isPending = String(t.status || "").startsWith("pending");
+            if (!isPending) return true;
 
-          const sameKind =
-            (t.type === nTx.type || t.txType === nTx.type) &&
-            (t.recipient || t.to) === (nTx.recipient || nTx.to);
+            const sameHash =
+              t.hash && nTx.hash && t.hash !== "N/A" && t.hash === nTx.hash;
 
-          return !(sameHash || sameKind);
-        });
-      }
+            const sameKind =
+              (t.type === nTx.type || t.txType === nTx.type) &&
+              (t.recipient || t.to) === (nTx.recipient || nTx.to);
 
-      updated = [nTx, ...updated].slice(0, MAX_ITEMS);
-      return updated;
-    });
-  };
+            return !(sameHash || sameKind);
+          });
+        }
 
-  const clearTx = () => {
-    localStorage.removeItem(STORAGE_KEY);
+        updated = [nTx, ...updated].slice(0, MAX_ITEMS);
+        return updated;
+      });
+    },
+    [setHistory]
+  );
+
+  const clearTx = useCallback(() => {
+    localStorage.removeItem(storageKey);
     setHistory([]);
-  };
+  }, [storageKey]);
 
-  return { history, addTx, clearTx };
+  return { history, addTx, clearTx, chainId, storageKey };
 }
 

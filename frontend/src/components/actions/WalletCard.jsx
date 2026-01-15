@@ -4,7 +4,7 @@ import { ethers } from "ethers";
 import { motion } from "framer-motion";
 
 import USDCMockABI from "../../abi/USDCMock.json";
-import addresses from "../../abi/addresses.json";
+import { getAddresses } from "../../config";
 
 const USDC_DECIMALS = 6;
 
@@ -17,18 +17,66 @@ export default function WalletCard({ walletAddress, isActive, onSelect }) {
   const [ethBalance, setEthBalance] = useState(null);
   const [usdcBalance, setUsdcBalance] = useState(null);
   const [flipped, setFlipped] = useState(false);
+  const [chainId, setChainId] = useState(null);
 
   const canRead = useMemo(() => !!window.ethereum && !!walletAddress, [walletAddress]);
+
+  // tieni chainId aggiornato (così quando switchi rete non leggi token sbagliato)
+  useEffect(() => {
+    let alive = true;
+
+    const readChain = async () => {
+      if (!window.ethereum) return;
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const net = await provider.getNetwork();
+        if (!alive) return;
+        setChainId(Number(net.chainId));
+      } catch {
+        // noop
+      }
+    };
+
+    readChain();
+
+    if (!window.ethereum) return;
+
+    const onChainChanged = () => {
+      setEthBalance(null);
+      setUsdcBalance(null);
+      setFlipped(false);
+      readChain();
+    };
+
+    window.ethereum.on("chainChanged", onChainChanged);
+    return () => {
+      alive = false;
+      window.ethereum.removeListener("chainChanged", onChainChanged);
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
 
     async function fetchBalances() {
       if (!canRead) return;
+      if (!chainId) return;
 
       try {
         const provider = new ethers.BrowserProvider(window.ethereum);
-        const usdc = new ethers.Contract(addresses.USDCMock, USDCMockABI.abi, provider);
+        const addrs = getAddresses(chainId);
+
+        const usdcAddr = addrs.USDCMock;
+        if (!usdcAddr) {
+          // se su una chain non hai USDC (o non vuoi), semplicemente mostra null
+          const ethWei = await provider.getBalance(walletAddress);
+          if (!alive) return;
+          setEthBalance(Number(ethers.formatEther(ethWei)));
+          setUsdcBalance(null);
+          return;
+        }
+
+        const usdc = new ethers.Contract(usdcAddr, USDCMockABI.abi, provider);
 
         const [ethWei, usdcRaw] = await Promise.all([
           provider.getBalance(walletAddress),
@@ -45,17 +93,15 @@ export default function WalletCard({ walletAddress, isActive, onSelect }) {
     }
 
     fetchBalances();
-    const id = setInterval(fetchBalances, 10000); // refresh morbido
+    const id = setInterval(fetchBalances, 10000);
     return () => {
       alive = false;
       clearInterval(id);
     };
-  }, [canRead, walletAddress]);
+  }, [canRead, walletAddress, chainId]);
 
   const handleClick = () => {
-    // Se vuoi anche selezionare il wallet al click: lo facciamo sempre
     onSelect?.(walletAddress);
-    // Flip: toggle
     setFlipped((v) => !v);
   };
 
@@ -73,7 +119,6 @@ export default function WalletCard({ walletAddress, isActive, onSelect }) {
         className={`relative cursor-pointer rounded-2xl border ${baseBorder} ${baseShadow} bg-[#0f0f1b]/80 backdrop-blur-md`}
         style={{ perspective: 1200 }}
       >
-        {/* container flip */}
         <motion.div
           animate={{ rotateY: flipped ? 180 : 0 }}
           transition={{ type: "spring", stiffness: 260, damping: 22 }}
@@ -85,19 +130,19 @@ export default function WalletCard({ walletAddress, isActive, onSelect }) {
         >
           {/* FRONT */}
           <div
-            className="absolute inset-0 rounded-2xl p-5 flex flex-col justify-between"
+            className="absolute inset-0 rounded-2xl p-4 sm:p-5 flex flex-col justify-between"
             style={{ backfaceVisibility: "hidden" }}
           >
             <div className="flex items-start justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-gray-400">Smart Wallet</p>
-                <p className="text-sm font-mono text-gray-200 mt-1">
+                <p className="text-sm font-mono text-gray-200 mt-1 truncate">
                   {shortAddr(walletAddress)}
                 </p>
               </div>
 
               {isActive && (
-                <span className="text-[11px] px-2 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-200">
+                <span className="shrink-0 text-[11px] px-2 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-200">
                   Active
                 </span>
               )}
@@ -105,9 +150,9 @@ export default function WalletCard({ walletAddress, isActive, onSelect }) {
 
             <div className="mt-3">
               <p className="text-xs text-gray-400 mb-1">ETH Balance</p>
-              <p className="text-3xl font-semibold text-white tracking-tight">
+              <p className="text-2xl sm:text-3xl font-semibold text-white tracking-tight">
                 {ethBalance === null ? "…" : ethBalance.toFixed(4)}{" "}
-                <span className="text-lg text-gray-300 font-medium">ETH</span>
+                <span className="text-base sm:text-lg text-gray-300 font-medium">ETH</span>
               </p>
               <p className="text-xs text-gray-500 mt-2">
                 Click to view USDC balance
@@ -117,34 +162,33 @@ export default function WalletCard({ walletAddress, isActive, onSelect }) {
 
           {/* BACK */}
           <div
-            className="absolute inset-0 rounded-2xl p-5 flex flex-col justify-between"
+            className="absolute inset-0 rounded-2xl p-4 sm:p-5 flex flex-col justify-between"
             style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
           >
             <div className="flex items-start justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-gray-400">USDC Balance</p>
-                <p className="text-sm font-mono text-gray-200 mt-1">
+                <p className="text-sm font-mono text-gray-200 mt-1 truncate">
                   {shortAddr(walletAddress)}
                 </p>
               </div>
 
-              <span className="text-[11px] px-2 py-1 rounded-full bg-[#1b1b2a] border border-[#2b2b3d] text-gray-300">
+              <span className="shrink-0 text-[11px] px-2 py-1 rounded-full bg-[#1b1b2a] border border-[#2b2b3d] text-gray-300">
                 Token
               </span>
             </div>
 
             <div className="mt-3">
               <p className="text-xs text-gray-400 mb-1">USDC in wallet</p>
-              <p className="text-3xl font-semibold text-white tracking-tight">
+              <p className="text-2xl sm:text-3xl font-semibold text-white tracking-tight">
                 {usdcBalance === null ? "…" : usdcBalance.toFixed(2)}{" "}
-                <span className="text-lg text-gray-300 font-medium">USDC</span>
+                <span className="text-base sm:text-lg text-gray-300 font-medium">USDC</span>
               </p>
               <p className="text-xs text-gray-500 mt-2">Click to go back</p>
             </div>
           </div>
         </motion.div>
 
-        {/* subtle glow line (coerente, non “viola pieno”) */}
         <div className="pointer-events-none absolute inset-0 rounded-2xl border border-white/5" />
       </motion.div>
     </div>
