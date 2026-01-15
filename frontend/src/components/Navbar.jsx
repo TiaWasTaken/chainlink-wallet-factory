@@ -68,11 +68,9 @@ export default function Navbar({ variant = "home" }) {
     if (!isConnected || !address) return null;
 
     if (isHardhat) {
-      // Only works on the same machine where hardhat node is running
       return new ethers.JsonRpcProvider("http://127.0.0.1:8545");
     }
 
-    // Works on desktop + mobile (MetaMask in-app browser)
     if (typeof window !== "undefined" && window.ethereum) {
       return new ethers.BrowserProvider(window.ethereum);
     }
@@ -88,7 +86,7 @@ export default function Navbar({ variant = "home" }) {
     return new ethers.Contract(addresses.USDCMock, USDCMockABI.abi, ethersProvider);
   }, [ethersProvider]);
 
-  // Hardhat-only aggregator (doesn't exist on Sepolia in your deployment)
+  // Hardhat-only aggregator
   const aggContract = useMemo(() => {
     if (!ethersProvider) return null;
     if (!isHardhat) return null;
@@ -101,7 +99,7 @@ export default function Navbar({ variant = "home" }) {
     );
   }, [ethersProvider, isHardhat]);
 
-  // Swap contract exists on both hardhat and sepolia (your deploy script writes EthUsdcSwap)
+  // Swap contract exists on both hardhat and sepolia
   const swapContract = useMemo(() => {
     if (!ethersProvider) return null;
     if (!addresses?.EthUsdcSwap) return null;
@@ -128,19 +126,17 @@ export default function Navbar({ variant = "home" }) {
     setUsdcBalance(Number(ethers.formatUnits(raw, 6)));
   };
 
-  // Price:
-  // - Sepolia (and also hardhat): use swap.getEthUsdPrice1e8()
-  // - Hardhat fallback: if swap not available, use MockV3Aggregator
   const fetchEthUsdPrice = async () => {
     // Prefer swap (works on Sepolia + Hardhat)
     if (swapContract) {
       const price1e8 = await swapContract.getEthUsdPrice1e8();
       const price = Number(price1e8) / 1e8;
-      setEthUsdPrice(price);
+      // se viene NaN o 0 “strano”, lo teniamo comunque numerico
+      setEthUsdPrice(Number.isFinite(price) ? price : null);
       return;
     }
 
-    // Hardhat-only fallback (old behavior)
+    // Hardhat-only fallback
     if (!aggContract) return;
     const roundData = await aggContract.latestRoundData();
     const answer = roundData[1]; // BigInt
@@ -155,16 +151,13 @@ export default function Navbar({ variant = "home" }) {
     else normalized1e8 = answer * 10n ** BigInt(8 - dec);
 
     const price = Number(normalized1e8) / 1e8;
-    setEthUsdPrice(price);
+    setEthUsdPrice(Number.isFinite(price) ? price : null);
   };
 
   const refreshAll = async () => {
     if (!isConnected || !address || !ethersProvider) return;
 
-    // Hardhat desktop: full balances + price
-    // Sepolia: full balances + price (via wallet provider + swap)
     const supported = isHardhat || isSepolia;
-
     if (!supported) return;
 
     try {
@@ -207,8 +200,10 @@ export default function Navbar({ variant = "home" }) {
   };
 
   const shortAccount = address ? `${address.slice(0, 8)}…${address.slice(-6)}` : "";
-  const oneEthInUsdc = ethUsdPrice ? ethUsdPrice : null;
-  const oneUsdcInEth = ethUsdPrice ? 1 / ethUsdPrice : null;
+
+  // IMPORTANT: non usare truthy check (0 è falsy)
+  const oneEthInUsdc = ethUsdPrice !== null ? ethUsdPrice : null;
+  const oneUsdcInEth = ethUsdPrice !== null && ethUsdPrice !== 0 ? 1 / ethUsdPrice : null;
 
   const handleLogoClick = () => {
     if (variant === "home" && isConnected) window.location.href = "/home";
@@ -217,7 +212,6 @@ export default function Navbar({ variant = "home" }) {
   const handleBalanceClick = async () => {
     const supported = isHardhat || isSepolia;
 
-    // If connected but on an unsupported network → open network switcher
     if (isConnected && !supported) {
       setShowMenu(false);
       setShowBalances(false);
@@ -260,16 +254,17 @@ export default function Navbar({ variant = "home" }) {
         {/* Left */}
         <div
           onClick={handleLogoClick}
-          className={`flex items-center gap-3 select-none ${
-            variant === "home" ? "cursor-pointer" : "cursor-default"
-          }`}
+          className={`flex items-center gap-3 select-none ${variant === "home" ? "cursor-pointer" : "cursor-default"
+            }`}
         >
           <img
             src={ethLogo}
             alt="ETH"
             className="w-8 h-8 transition-transform hover:scale-110 duration-200 drop-shadow-[0_0_6px_rgba(145,94,255,0.35)]"
           />
-          <h1 className="text-lg font-bold text-white">
+
+          {/* Desktop/tablet: testo visibile. Mobile: solo logo */}
+          <h1 className="text-lg font-bold text-white hidden sm:block">
             <span className="text-[#915eff]">Ether</span>Connect
           </h1>
         </div>
@@ -293,12 +288,11 @@ export default function Navbar({ variant = "home" }) {
                     onClick={handleBalanceClick}
                     className={`text-sm font-medium flex items-center gap-1 px-3 py-2 rounded-xl
                       border transition-all duration-200
-                      ${
-                        supported
-                          ? balanceChanged
-                            ? "text-[#915eff] border-[#915eff]/30 bg-[#151520]/60"
-                            : "text-gray-200 border-white/10 bg-[#151520]/40 hover:bg-[#151520]/60"
-                          : "text-red-300 border-red-400/20 bg-[#151520]/40 hover:bg-[#151520]/60"
+                      ${supported
+                        ? balanceChanged
+                          ? "text-[#915eff] border-[#915eff]/30 bg-[#151520]/60"
+                          : "text-gray-200 border-white/10 bg-[#151520]/40 hover:bg-[#151520]/60"
+                        : "text-red-300 border-red-400/20 bg-[#151520]/40 hover:bg-[#151520]/60"
                       }
                       max-sm:max-w-[62vw] max-sm:truncate
                     `}
@@ -308,14 +302,16 @@ export default function Navbar({ variant = "home" }) {
                   </button>
 
                   {showBalances && supported && (
-                    <div
-                      className="
-                        absolute right-0 top-12 z-50
-                        bg-[#141422]/95 rounded-2xl shadow-xl border border-[#29293d] p-4 backdrop-blur-md
-                        w-[360px]
-                        max-sm:w-[92vw] max-sm:max-w-[360px]
-                      "
-                    >
+<div
+  className="
+    z-[10000] bg-[#141422]/95 rounded-2xl shadow-xl border border-[#29293d] p-4 backdrop-blur-md
+    w-[360px]
+    absolute right-0 top-12
+    max-sm:fixed max-sm:left-1/2 max-sm:top-[72px] max-sm:-translate-x-1/2
+    max-sm:right-auto max-sm:w-[92vw] max-sm:max-w-[360px]
+  "
+>
+
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div className="min-w-0">
                           <p className="text-xs text-gray-400">Wallet</p>
@@ -332,11 +328,11 @@ export default function Navbar({ variant = "home" }) {
                           <p className="text-[11px] text-gray-400">
                             {lastUpdatedAt
                               ? `Updated: ${lastUpdatedAt.toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  second: "2-digit",
-                                })}`
-                              : "Updated: —"}
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                second: "2-digit",
+                              })}`
+                              : "Updated: …"}
                           </p>
                         </div>
                       </div>
@@ -360,13 +356,13 @@ export default function Navbar({ variant = "home" }) {
                         <div className="bg-[#10101a] border border-white/5 rounded-xl p-3">
                           <p className="text-[11px] text-gray-400">1 ETH</p>
                           <p className="text-base font-semibold text-white">
-                            {oneEthInUsdc ? `${oneEthInUsdc.toFixed(2)} USDC` : "—"}
+                            {oneEthInUsdc !== null ? `${oneEthInUsdc.toFixed(2)} USDC` : "…"}
                           </p>
                         </div>
                         <div className="bg-[#10101a] border border-white/5 rounded-xl p-3">
                           <p className="text-[11px] text-gray-400">1 USDC</p>
                           <p className="text-base font-semibold text-white">
-                            {oneUsdcInEth ? `${oneUsdcInEth.toFixed(8)} ETH` : "—"}
+                            {oneUsdcInEth !== null ? `${oneUsdcInEth.toFixed(8)} ETH` : "…"}
                           </p>
                         </div>
                       </div>
@@ -397,8 +393,12 @@ export default function Navbar({ variant = "home" }) {
                     <img
                       src={avatar}
                       alt="avatar"
-                      className="w-10 h-10 rounded-full border border-[#915eff]/60 shadow-[0_0_10px_rgba(145,94,255,0.25)]
-                      cursor-pointer hover:scale-105 transition-transform"
+                      className="
+                        w-10 h-10 rounded-full border border-[#915eff]/60
+                        shadow-[0_0_10px_rgba(145,94,255,0.25)]
+                        cursor-pointer hover:scale-105 transition-transform
+                        object-cover object-center shrink-0
+                      "
                       onClick={() => {
                         setShowMenu(!showMenu);
                         setShowBalances(false);

@@ -1,13 +1,12 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Factory, Repeat, Gauge, Link, History } from "lucide-react";
+import { Send, Factory, Repeat, Gauge, History } from "lucide-react";
 import { useAccount } from "wagmi";
 
 import WalletList from "./actions/WalletList";
 import SendEth from "./actions/SendEth";
 import GasTracker from "./actions/GasTracker";
 import TransactionHistory from "./actions/TransactionHistory";
-import OraclePrice from "./actions/OraclePrice";
 import SwapSection from "./actions/SwapSection";
 
 const SectionPlaceholder = ({ title }) => (
@@ -29,16 +28,19 @@ export default function EtherMenu({ setActiveWallet }) {
   const { address } = useAccount();
   const account = address ?? null;
 
-  const [selected, setSelected] = useState(null);
+  // default su wallets per evitare “null state” e rendere tutto più fluido
+  const [selected, setSelected] = useState("wallets");
 
-  const menuItems = [
-    { id: "wallets", label: "Wallets & Factory", icon: <Factory size={20} /> },
-    { id: "send", label: "Send ETH", icon: <Send size={20} /> },
-    { id: "swap", label: "Token Swap", icon: <Repeat size={20} /> },
-    { id: "gas", label: "Gas Tracker", icon: <Gauge size={20} /> },
-    { id: "oracle", label: "Oracle Price", icon: <Link size={20} /> },
-    { id: "history", label: "Tx History", icon: <History size={20} /> }
-  ];
+  const menuItems = useMemo(
+    () => [
+      { id: "wallets", label: "Wallets & Factory", icon: <Factory size={20} /> },
+      { id: "send", label: "Send ETH", icon: <Send size={20} /> },
+      { id: "swap", label: "Token Swap", icon: <Repeat size={20} /> },
+      { id: "gas", label: "Gas Tracker", icon: <Gauge size={20} /> },
+      { id: "history", label: "Tx History", icon: <History size={20} /> },
+    ],
+    []
+  );
 
   const renderSection = () => {
     switch (selected) {
@@ -54,8 +56,6 @@ export default function EtherMenu({ setActiveWallet }) {
         return <GasTracker />;
       case "history":
         return <TransactionHistory />;
-      case "oracle":
-        return <OraclePrice />;
       default:
         return (
           <SectionPlaceholder
@@ -67,8 +67,8 @@ export default function EtherMenu({ setActiveWallet }) {
 
   return (
     <section
-      className={`relative w-full min-h-[700px] flex flex-col items-center text-white overflow-visible ${
-        selected ? "pt-24 pb-40" : "pt-24 pb-32"
+      className={`relative w-full min-h-[700px] flex flex-col items-center text-white overflow-visible pt-24 ${
+        selected ? "pb-40" : "pb-32"
       }`}
     >
       <motion.div
@@ -86,61 +86,77 @@ export default function EtherMenu({ setActiveWallet }) {
         Explore the App
       </motion.h2>
 
-      {/* ✅ Desktop identico: gap-8 px-10 py-8 w-36 h-28
-          ✅ Mobile: width grande + 2 colonne + padding ridotto */}
+      {/* Menu: desktop = wrap center | mobile = horizontal scroll snap */}
       <motion.div
         initial={{ opacity: 0, y: 25 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
         className="
-          relative z-10 flex flex-wrap justify-center gap-8
-          bg-[#12122b]/70 backdrop-blur-lg px-10 py-8 rounded-2xl
+          relative z-10 w-full max-w-6xl
+          bg-[#12122b]/70 backdrop-blur-lg rounded-2xl
           shadow-[0_0_25px_rgba(145,94,255,0.15)] border border-[#2b2b3d]
-          max-sm:w-[92vw] max-sm:px-4 max-sm:py-6 max-sm:gap-4
+          px-6 py-6 sm:px-10 sm:py-8
         "
       >
-        {menuItems.map((item) => (
-          <motion.button
-            key={item.id}
-            onClick={() => setSelected((prev) => (prev === item.id ? null : item.id))}
-            whileHover={{ scale: 1.07, boxShadow: "0 0 18px rgba(145,94,255,0.3)" }}
-            whileTap={{ scale: 0.95 }}
-            animate={
-              selected === item.id
-                ? { scale: [1, 1.02, 1], transition: { repeat: Infinity, duration: 2 } }
-                : {}
-            }
-            className={`relative overflow-hidden flex flex-col items-center justify-center gap-2
-              w-36 h-28 rounded-xl transition-all duration-300
-              max-sm:w-[44%] max-sm:h-24
-              ${
-                selected === item.id
-                  ? "bg-gradient-to-b from-[#6b3aff]/80 to-[#915eff]/70 text-white shadow-[0_0_25px_rgba(145,94,255,0.4)]"
-                  : "bg-[#1b1b2a]/80 hover:bg-[#252540]/80 text-gray-400"
-              }`}
-          >
-            <motion.span
-              className="absolute inset-0 rounded-xl bg-[#915eff]/20 opacity-0"
-              whileHover={{ opacity: [0, 0.3, 0], scale: [1, 1.3, 1] }}
-              transition={{ duration: 1 }}
-            />
-            <div>{item.icon}</div>
-            <span className="text-sm font-medium text-center leading-tight max-sm:text-xs max-sm:px-2">
-              {item.label}
-            </span>
-          </motion.button>
-        ))}
+        <div
+          className="
+            flex gap-4 sm:gap-8
+            sm:flex-wrap sm:justify-center
+            overflow-x-auto sm:overflow-visible
+            -mx-6 px-6 sm:mx-0 sm:px-0
+            snap-x snap-mandatory
+            scrollbar-thin scrollbar-thumb-[#2b2b3d] scrollbar-track-transparent
+          "
+        >
+          {menuItems.map((item) => {
+            const isActive = selected === item.id;
+
+            return (
+              <motion.button
+                key={item.id}
+                onClick={() => setSelected(item.id)}
+                whileHover={{ scale: 1.05, boxShadow: "0 0 18px rgba(145,94,255,0.30)" }}
+                whileTap={{ scale: 0.96 }}
+                className={`
+                  snap-start shrink-0
+                  relative overflow-hidden flex flex-col items-center justify-center gap-2
+                  w-[160px] h-[104px] sm:w-36 sm:h-28 rounded-xl transition-all duration-300
+                  ${
+                    isActive
+                      ? "bg-gradient-to-b from-[#6b3aff]/80 to-[#915eff]/70 text-white shadow-[0_0_25px_rgba(145,94,255,0.35)]"
+                      : "bg-[#1b1b2a]/80 hover:bg-[#252540]/80 text-gray-400"
+                  }
+                `}
+              >
+                <motion.span
+                  className="absolute inset-0 rounded-xl bg-[#915eff]/20 opacity-0"
+                  whileHover={{ opacity: [0, 0.3, 0], scale: [1, 1.25, 1] }}
+                  transition={{ duration: 1 }}
+                />
+                <div>{item.icon}</div>
+                <span className="text-sm font-medium text-center leading-tight px-2">
+                  {item.label}
+                </span>
+              </motion.button>
+            );
+          })}
+        </div>
+
+        {/* hint mobile */}
+        <div className="mt-3 text-xs text-gray-500 sm:hidden">
+          Swipe horizontally to see all sections
+        </div>
       </motion.div>
 
       <AnimatePresence mode="wait">
         {selected && (
           <motion.div
             key={selected}
-            initial={{ opacity: 0, y: 25 }}
+            initial={{ opacity: 0, y: 22 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 25 }}
-            transition={{ duration: 0.4 }}
-            className="w-full flex justify-center mt-12 max-sm:mt-10 max-sm:px-4"
+            exit={{ opacity: 0, y: 22 }}
+            transition={{ duration: 0.35 }}
+            className="w-full flex justify-center mt-10 sm:mt-12 px-4"
           >
             <div className="w-full max-w-5xl flex justify-center">{renderSection()}</div>
           </motion.div>

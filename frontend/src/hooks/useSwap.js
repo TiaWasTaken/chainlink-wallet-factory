@@ -31,10 +31,10 @@ export function useSwap(activeWalletAddress) {
   const [swap, setSwap] = useState(null);
   const [priceConsumer, setPriceConsumer] = useState(null);
 
-  const [ethBalance, setEthBalance] = useState(null);
-  const [usdcBalance, setUsdcBalance] = useState(null);
-  const [ethUsdPrice, setEthUsdPrice] = useState(null);
-  const [ethToUsdcRate, setEthToUsdcRate] = useState(null);
+  const [ethBalance, setEthBalance] = useState(null); // BigInt
+  const [usdcBalance, setUsdcBalance] = useState(null); // BigInt
+  const [ethUsdPrice, setEthUsdPrice] = useState(null); // number
+  const [ethToUsdcRate, setEthToUsdcRate] = useState(null); // number
 
   const [loading, setLoading] = useState(true);
   const [txPending, setTxPending] = useState(false);
@@ -93,10 +93,12 @@ export function useSwap(activeWalletAddress) {
         setLoading(false);
         return;
       }
+
       if (!isConnected || !eoaAddress) {
         setLoading(false);
         return;
       }
+
       if (missingConfig) {
         setError(missingConfig);
         setLoading(false);
@@ -119,6 +121,7 @@ export function useSwap(activeWalletAddress) {
           _signer
         );
 
+        // Read-only is enough for price consumer
         const consumer = new ethers.Contract(
           addresses.PriceConsumerV3,
           PriceConsumerABI.abi,
@@ -148,6 +151,7 @@ export function useSwap(activeWalletAddress) {
 
   const getSmartWallet = useCallback(() => {
     if (!signer || !activeAddress) return null;
+    if (!ethers.isAddress(activeAddress)) return null;
     return new ethers.Contract(activeAddress, SmartWalletArtifact.abi, signer);
   }, [signer, activeAddress]);
 
@@ -166,17 +170,21 @@ export function useSwap(activeWalletAddress) {
       const oneEth = ethers.parseEther("1");
       const rateUsdc = await swap.quoteBuyUsdc(oneEth);
 
-      // price from PriceConsumerV3
+      // price from PriceConsumerV3 (robust BigInt parsing)
       const dec = Number(await priceConsumer.getDecimals());
       const latest = await priceConsumer.getLatestPrice();
       const latestBig = typeof latest === "bigint" ? latest : BigInt(latest);
 
       setEthBalance(ethBal);
       setUsdcBalance(usdcBalRaw);
-      setEthToUsdcRate(Number(ethers.formatUnits(rateUsdc, 6)));
+
+      // rate (1 ETH -> USDC)
+      setEthToUsdcRate(Number(ethers.formatUnits(rateUsdc, USDC_DECIMALS)));
 
       if (latestBig > 0n) {
-        setEthUsdPrice(Number(latestBig) / Math.pow(10, dec));
+        const asStr = ethers.formatUnits(latestBig, dec); // safe conversion
+        const asNum = Number(asStr);
+        setEthUsdPrice(Number.isFinite(asNum) ? asNum : null);
       } else {
         setEthUsdPrice(null);
       }
@@ -196,7 +204,7 @@ export function useSwap(activeWalletAddress) {
   // ---- actions ----
   const buyUsdc = useCallback(
     async (ethAmount) => {
-      if (!swap || !eoaAddress || !activeAddress) return;
+      if (!swap || !eoaAddress || !activeAddress) return null;
 
       try {
         setTxPending(true);
@@ -210,16 +218,19 @@ export function useSwap(activeWalletAddress) {
           const wallet = getSmartWallet();
           if (!wallet) throw new Error("SmartWallet not ready");
           const tx = await wallet.swapEthToUsdc(ethWei, minUsdcOut);
-          await tx.wait();
+          const receipt = await tx.wait();
+          await refresh();
+          return { tx, receipt };
         } else {
           const tx = await swap.buyUsdc(eoaAddress, { value: ethWei });
-          await tx.wait();
+          const receipt = await tx.wait();
+          await refresh();
+          return { tx, receipt };
         }
-
-        await refresh();
       } catch (e) {
         console.error("buyUsdc error:", e);
         setError(e?.shortMessage || e?.message || "buyUsdc failed");
+        throw e;
       } finally {
         setTxPending(false);
       }
@@ -229,7 +240,7 @@ export function useSwap(activeWalletAddress) {
 
   const sellUsdc = useCallback(
     async (usdcAmount) => {
-      if (!swap || !usdc || !eoaAddress || !activeAddress) return;
+      if (!swap || !usdc || !eoaAddress || !activeAddress) return null;
 
       try {
         setTxPending(true);
@@ -243,18 +254,24 @@ export function useSwap(activeWalletAddress) {
           const wallet = getSmartWallet();
           if (!wallet) throw new Error("SmartWallet not ready");
           const tx = await wallet.swapUsdcToEth(amount, minEthOut);
-          await tx.wait();
+          const receipt = await tx.wait();
+          await refresh();
+          return { tx, receipt };
         } else {
+          // approve + sell
           const approveTx = await usdc.approve(await swap.getAddress(), amount);
           await approveTx.wait();
-          const sellTx = await swap.sellUsdc(eoaAddress, amount);
-          await sellTx.wait();
-        }
 
-        await refresh();
+          const sellTx = await swap.sellUsdc(eoaAddress, amount);
+          const receipt = await sellTx.wait();
+
+          await refresh();
+          return { tx: sellTx, receipt };
+        }
       } catch (e) {
         console.error("sellUsdc error:", e);
         setError(e?.shortMessage || e?.message || "sellUsdc failed");
+        throw e;
       } finally {
         setTxPending(false);
       }
