@@ -5,6 +5,7 @@ import ethLogo from "../assets/eth_logo.png";
 import addresses from "../abi/addresses.json";
 import USDCMockABI from "../abi/USDCMock.json";
 import MockV3AggregatorABI from "../abi/MockV3Aggregator.json";
+import EthUsdcSwapABI from "../abi/EthUsdcSwap.json";
 
 import { useWeb3Modal } from "@web3modal/wagmi/react";
 import { useAccount, useDisconnect, useChainId } from "wagmi";
@@ -17,6 +18,7 @@ export default function Navbar({ variant = "home" }) {
   const { disconnect } = useDisconnect();
 
   const isHardhat = chainId === 31337;
+  const isSepolia = chainId === 11155111;
 
   // --- UI state
   const [ethBalance, setEthBalance] = useState(null);
@@ -59,31 +61,60 @@ export default function Navbar({ variant = "home" }) {
     setAvatar(`/avatars/avatar${randomIndex}.png`);
   }, [address]);
 
-  // Deterministic provider for Hardhat reads
+  // Provider:
+  // - Hardhat: deterministic RPC (localhost)
+  // - Sepolia/others: wallet provider (MetaMask / Web3Modal)
   const ethersProvider = useMemo(() => {
     if (!isConnected || !address) return null;
-    if (!isHardhat) return null; // we only support your local chain here
-    return new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+
+    if (isHardhat) {
+      // Only works on the same machine where hardhat node is running
+      return new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+    }
+
+    // Works on desktop + mobile (MetaMask in-app browser)
+    if (typeof window !== "undefined" && window.ethereum) {
+      return new ethers.BrowserProvider(window.ethereum);
+    }
+
+    return null;
   }, [isConnected, address, isHardhat]);
 
+  // Contracts (guarded: only create if address exists)
   const usdcContract = useMemo(() => {
     if (!ethersProvider) return null;
+    if (!addresses?.USDCMock) return null;
+
     return new ethers.Contract(addresses.USDCMock, USDCMockABI.abi, ethersProvider);
   }, [ethersProvider]);
 
+  // Hardhat-only aggregator (doesn't exist on Sepolia in your deployment)
   const aggContract = useMemo(() => {
     if (!ethersProvider) return null;
+    if (!isHardhat) return null;
+    if (!addresses?.MockV3Aggregator) return null;
+
     return new ethers.Contract(
       addresses.MockV3Aggregator,
       MockV3AggregatorABI.abi,
       ethersProvider
     );
+  }, [ethersProvider, isHardhat]);
+
+  // Swap contract exists on both hardhat and sepolia (your deploy script writes EthUsdcSwap)
+  const swapContract = useMemo(() => {
+    if (!ethersProvider) return null;
+    if (!addresses?.EthUsdcSwap) return null;
+
+    return new ethers.Contract(addresses.EthUsdcSwap, EthUsdcSwapABI.abi, ethersProvider);
   }, [ethersProvider]);
 
   const fetchEthBalance = async () => {
     if (!ethersProvider || !address) return;
+
     const wei = await ethersProvider.getBalance(address);
     const val = Number(ethers.formatEther(wei));
+
     if (Number.isFinite(val)) {
       setPrevEth((p) => (p === null ? val : ethBalance));
       setEthBalance(val);
@@ -92,13 +123,25 @@ export default function Navbar({ variant = "home" }) {
 
   const fetchUsdcBalance = async () => {
     if (!usdcContract || !address) return;
+
     const raw = await usdcContract.balanceOf(address); // 6 decimals
     setUsdcBalance(Number(ethers.formatUnits(raw, 6)));
   };
 
+  // Price:
+  // - Sepolia (and also hardhat): use swap.getEthUsdPrice1e8()
+  // - Hardhat fallback: if swap not available, use MockV3Aggregator
   const fetchEthUsdPrice = async () => {
-    if (!aggContract) return;
+    // Prefer swap (works on Sepolia + Hardhat)
+    if (swapContract) {
+      const price1e8 = await swapContract.getEthUsdPrice1e8();
+      const price = Number(price1e8) / 1e8;
+      setEthUsdPrice(price);
+      return;
+    }
 
+    // Hardhat-only fallback (old behavior)
+    if (!aggContract) return;
     const roundData = await aggContract.latestRoundData();
     const answer = roundData[1]; // BigInt
     const decimals = await aggContract.decimals();
@@ -116,7 +159,14 @@ export default function Navbar({ variant = "home" }) {
   };
 
   const refreshAll = async () => {
-    if (!isConnected || !address || !isHardhat || !ethersProvider) return;
+    if (!isConnected || !address || !ethersProvider) return;
+
+    // Hardhat desktop: full balances + price
+    // Sepolia: full balances + price (via wallet provider + swap)
+    const supported = isHardhat || isSepolia;
+
+    if (!supported) return;
+
     try {
       await Promise.all([fetchEthBalance(), fetchUsdcBalance(), fetchEthUsdPrice()]);
       setLastUpdatedAt(new Date());
@@ -126,14 +176,16 @@ export default function Navbar({ variant = "home" }) {
     }
   };
 
-  // Refresh every 10s while connected on Hardhat
+  // Refresh every 10s while connected on supported networks
   useEffect(() => {
-    if (!isConnected || !address || !isHardhat || !ethersProvider) return;
+    const supported = isHardhat || isSepolia;
+    if (!isConnected || !address || !supported || !ethersProvider) return;
+
     refreshAll();
     const interval = setInterval(refreshAll, 10000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected, address, isHardhat, ethersProvider]);
+  }, [isConnected, address, isHardhat, isSepolia, ethersProvider, swapContract, usdcContract]);
 
   // Click outside closes popovers
   useEffect(() => {
@@ -163,7 +215,10 @@ export default function Navbar({ variant = "home" }) {
   };
 
   const handleBalanceClick = async () => {
-    if (isConnected && !isHardhat) {
+    const supported = isHardhat || isSepolia;
+
+    // If connected but on an unsupported network → open network switcher
+    if (isConnected && !supported) {
       setShowMenu(false);
       setShowBalances(false);
       await open({ view: "Networks" });
@@ -176,13 +231,31 @@ export default function Navbar({ variant = "home" }) {
     if (next) await refreshAll();
   };
 
+  const balanceButtonLabel = () => {
+    if (!isConnected) return "";
+    if (isHardhat) {
+      return `Ξ ${ethBalance !== null ? ethBalance.toFixed(4) : "…"} ETH`;
+    }
+    if (isSepolia) {
+      return `Sepolia • Ξ ${ethBalance !== null ? ethBalance.toFixed(4) : "…"} ETH`;
+    }
+    return "Wrong network";
+  };
+
+  const balanceButtonTitle = () => {
+    if (isHardhat) return "Click to view ETH/USDC balances (Hardhat)";
+    if (isSepolia) return "Click to view ETH/USDC balances (Sepolia)";
+    return "Wrong network — click to switch";
+  };
+
+  const supported = isHardhat || isSepolia;
+
   return (
     <nav
       className="w-full fixed top-0 left-0 z-[9999]
       backdrop-blur-xl bg-[#0d0d16]/70 border-b-0
       shadow-[0_4px_30px_rgba(0,0,0,0.4)] ring-1 ring-white/5"
     >
-      {/* ✅ Desktop base = come prima | ✅ Mobile override sotto sm */}
       <div className="w-full flex justify-between items-center px-8 py-4 gap-5 max-sm:px-4 max-sm:py-3 max-sm:gap-3">
         {/* Left */}
         <div
@@ -221,24 +294,20 @@ export default function Navbar({ variant = "home" }) {
                     className={`text-sm font-medium flex items-center gap-1 px-3 py-2 rounded-xl
                       border transition-all duration-200
                       ${
-                        balanceChanged
-                          ? "text-[#915eff] border-[#915eff]/30 bg-[#151520]/60"
-                          : "text-gray-200 border-white/10 bg-[#151520]/40 hover:bg-[#151520]/60"
+                        supported
+                          ? balanceChanged
+                            ? "text-[#915eff] border-[#915eff]/30 bg-[#151520]/60"
+                            : "text-gray-200 border-white/10 bg-[#151520]/40 hover:bg-[#151520]/60"
+                          : "text-red-300 border-red-400/20 bg-[#151520]/40 hover:bg-[#151520]/60"
                       }
                       max-sm:max-w-[62vw] max-sm:truncate
                     `}
-                    title={
-                      !isHardhat
-                        ? "Wrong network — click to switch"
-                        : "Click to view ETH/USDC balances"
-                    }
+                    title={balanceButtonTitle()}
                   >
-                    {!isHardhat
-                      ? "Wrong network"
-                      : `Ξ ${ethBalance !== null ? ethBalance.toFixed(4) : "…"} ETH`}
+                    {balanceButtonLabel()}
                   </button>
 
-                  {showBalances && isHardhat && (
+                  {showBalances && supported && (
                     <div
                       className="
                         absolute right-0 top-12 z-50

@@ -1,20 +1,20 @@
 import { useState, useEffect, useRef } from "react";
 import { ethers } from "ethers";
-import PriceConsumerABI from "../abi/PriceConsumerV3.json";
-import MockV3AggregatorABI from "../abi/MockV3Aggregator.json";
+import EthUsdcSwapABI from "../abi/EthUsdcSwap.json";
 import addresses from "../abi/addresses.json";
 
 export default function useOraclePrice() {
   const [price, setPrice] = useState(null);
   const [trend, setTrend] = useState(null);
 
-  const [decimals, setDecimals] = useState(null);
+  const [decimals, setDecimals] = useState(8);
   const [roundId, setRoundId] = useState(null);
   const [updatedAt, setUpdatedAt] = useState(null);
   const [answeredInRound, setAnsweredInRound] = useState(null);
 
-  const feedAddress = addresses.MockV3Aggregator;
-  const consumerAddress = addresses.OraclePrice;
+  // Ora la "fonte" è lo swap, che internamente legge il feed Chainlink/mock
+  const feedAddress = addresses.EthUsdFeed; // lo scriviamo nel deploy_all.js
+  const consumerAddress = addresses.EthUsdcSwap;
 
   const [network, setNetwork] = useState({
     name: "Loading...",
@@ -26,7 +26,10 @@ export default function useOraclePrice() {
 
   const fetchPrice = async () => {
     try {
-      const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+      if (!window.ethereum) return;
+
+      // Wallet-based provider: funziona su desktop + mobile (MetaMask browser)
+      const provider = new ethers.BrowserProvider(window.ethereum);
 
       const net = await provider.getNetwork();
       setNetwork({
@@ -34,31 +37,21 @@ export default function useOraclePrice() {
         chainId: Number(net.chainId)
       });
 
-      // ****** QUI LA CORREZIONE IMPORTANTE ******
-      const consumer = new ethers.Contract(
-        addresses.OraclePrice,
-        PriceConsumerABI.abi,
+      const swap = new ethers.Contract(
+        addresses.EthUsdcSwap,
+        EthUsdcSwapABI.abi,
         provider
       );
 
-      const aggregator = new ethers.Contract(
-        addresses.MockV3Aggregator,
-        MockV3AggregatorABI.abi,
-        provider
-      );
+      // prezzo ETH/USD normalizzato 1e8
+      const price1e8 = await swap.getEthUsdPrice1e8();
+      const formatted = Number(price1e8) / 1e8;
 
-      const dec = Number(await consumer.getDecimals());
-      setDecimals(dec);
-
-      const latestPrice = await consumer.getLatestPrice();
-
-      const formatted = Number(latestPrice) / Math.pow(10, dec);
-
-
-      const rd = await aggregator.latestRoundData();
-      setRoundId(Number(rd[0]));
-      setUpdatedAt(Number(rd[3]));
-      setAnsweredInRound(Number(rd[4]));
+      // i campi roundId/updatedAt/answeredInRound non li abbiamo dallo swap
+      // (a meno di leggere il feed direttamente). Li lasciamo null e UI li gestirà.
+      setRoundId(null);
+      setUpdatedAt(Math.floor(Date.now() / 1000)); // fallback: "adesso"
+      setAnsweredInRound(null);
 
       if (lastPrice.current !== null) {
         if (formatted > lastPrice.current) setTrend("up");
@@ -77,7 +70,6 @@ export default function useOraclePrice() {
       });
 
       setHistory(prev => [...prev, { time: label, value: formatted }].slice(-30));
-
     } catch (err) {
       console.log("Oracle price error:", err);
     }
@@ -90,10 +82,16 @@ export default function useOraclePrice() {
   }, []);
 
   return {
-    price, trend,
-    decimals, roundId, updatedAt, answeredInRound,
-    feedAddress, consumerAddress,
-    network, history
+    price,
+    trend,
+    decimals,
+    roundId,
+    updatedAt,
+    answeredInRound,
+    feedAddress,
+    consumerAddress,
+    network,
+    history
   };
 }
 

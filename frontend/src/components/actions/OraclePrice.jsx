@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Line } from "react-chartjs-2";
 import "chart.js/auto";
 import { TrendingUp } from "lucide-react";
@@ -15,7 +14,7 @@ export default function OraclePrice() {
     feedAddress,
     consumerAddress,
     network,
-    history
+    history,
   } = useOraclePrice();
 
   const getColor = () => {
@@ -61,45 +60,53 @@ export default function OraclePrice() {
     },
   };
 
+  const liveBadgeClass = trend
+    ? "bg-green-500/20 text-green-400"
+    : "bg-red-500/20 text-red-400";
+
+  const formattedPrice =
+    price !== null && price !== undefined
+      ? `$${price.toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}`
+      : "--";
+
+  const updatedLabel =
+    updatedAt
+      ? new Date(updatedAt * 1000).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })
+      : "--";
+
+  const shortAddr = (addr) =>
+    addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : "--";
+
   return (
     <div className="bg-[#0b0b15] border border-[#1f1f2d] rounded-2xl p-6 w-full max-w-6xl mx-auto shadow-lg">
       <div className="flex flex-col lg:flex-row gap-6">
-        
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-4">
             <h2 className="text-xl font-semibold text-white">Oracle Price</h2>
-            <span
-              className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
-                trend ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
-              }`}
-            >
+            <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${liveBadgeClass}`}>
               LIVE
             </span>
           </div>
 
           <p className="text-gray-400 text-sm mb-4">
-            Chainlink-compatible Price Feed (Mock)
+            Chainlink-compatible Price Feed (Swap-backed)
           </p>
 
           <div className="flex justify-between items-start mb-4">
             <div>
               <p className="text-gray-400 text-sm">ETH/USD Price</p>
-              <p className={`text-4xl font-bold ${getColor()}`}>
-                {price
-                  ? `$${price.toLocaleString("en-US", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  : "--"}
-              </p>
+              <p className={`text-4xl font-bold ${getColor()}`}>{formattedPrice}</p>
+
               <p className="text-gray-500 text-xs mt-1 flex items-center gap-1">
                 <TrendingUp size={12} />
-                Updated:{" "}
-                {new Date(updatedAt * 1000).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  second: "2-digit",
-                })}
+                Updated: {updatedLabel}
               </p>
             </div>
           </div>
@@ -108,23 +115,22 @@ export default function OraclePrice() {
             <p className="font-semibold mb-2">Technical details</p>
 
             <div className="flex flex-col gap-1">
-              <span>Decimals: {decimals}</span>
-              <span>Round ID: {roundId}</span>
-              <span>Answered In Round: {answeredInRound}</span>
+              <span>Decimals: {decimals ?? "--"}</span>
+              <span>Round ID: {roundId ?? "--"}</span>
+              <span>Answered In Round: {answeredInRound ?? "--"}</span>
+
               <span>
                 Feed Address:{" "}
-                <span className="text-purple-400">
-                  {feedAddress.slice(0, 6)}...{feedAddress.slice(-4)}
-                </span>
+                <span className="text-purple-400">{shortAddr(feedAddress)}</span>
               </span>
+
               <span>
                 Consumer Address:{" "}
-                <span className="text-purple-400">
-                  {consumerAddress.slice(0, 6)}...{consumerAddress.slice(-4)}
-                </span>
+                <span className="text-purple-400">{shortAddr(consumerAddress)}</span>
               </span>
+
               <span className="mt-2 text-gray-500 text-xs">
-                Network: {network.name} (Chain ID: {network.chainId})
+                Network: {network?.name ?? "--"} (Chain ID: {network?.chainId ?? "--"})
               </span>
             </div>
           </div>

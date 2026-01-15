@@ -1,26 +1,35 @@
 // src/hooks/useSwap.js
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { ethers } from "ethers";
+import { useAccount, useChainId } from "wagmi";
 
-import addresses from "../abi/addresses.json";
 import USDCMockArtifact from "../abi/USDCMock.json";
 import EthUsdcSwapArtifact from "../abi/EthUsdcSwap.json";
 import SmartWalletArtifact from "../abi/SmartWallet.json";
+import PriceConsumerABI from "../abi/PriceConsumerV3.json";
+
+import { getAddresses } from "../abi/addressesByChain";
 
 const USDC_DECIMALS = 6;
 const SLIPPAGE_BPS = 100n; // 1%
+const REFRESH_MS = 10_000;
 
 function applySlippageBps(amount, bps) {
   return (amount * (10000n - bps)) / 10000n;
 }
 
+const isAddr = (a) => typeof a === "string" && ethers.isAddress(a);
+
 export function useSwap(activeWalletAddress) {
+  const { address: eoaAddress, isConnected } = useAccount();
+  const chainId = useChainId();
+
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
-  const [eoaAddress, setEoaAddress] = useState(null);
 
   const [usdc, setUsdc] = useState(null);
   const [swap, setSwap] = useState(null);
+  const [priceConsumer, setPriceConsumer] = useState(null);
 
   const [ethBalance, setEthBalance] = useState(null);
   const [usdcBalance, setUsdcBalance] = useState(null);
@@ -32,23 +41,71 @@ export function useSwap(activeWalletAddress) {
   const [error, setError] = useState(null);
 
   const activeAddress = activeWalletAddress || eoaAddress;
-  const isSmartWallet =
-    !!activeAddress && !!eoaAddress && activeAddress.toLowerCase() !== eoaAddress.toLowerCase();
 
-  // ---- init provider + contracts ----
+  const isSmartWallet =
+    !!activeAddress &&
+    !!eoaAddress &&
+    activeAddress.toLowerCase() !== eoaAddress.toLowerCase();
+
+  const addresses = useMemo(() => {
+    if (!chainId) return null;
+    try {
+      return getAddresses(chainId);
+    } catch {
+      return null;
+    }
+  }, [chainId]);
+
+  const missingConfig = useMemo(() => {
+    if (!isConnected) return "Wallet not connected.";
+    if (!addresses) return `Unsupported network (no addresses for chainId ${chainId}).`;
+
+    const required = [
+      ["EthUsdcSwap", addresses.EthUsdcSwap],
+      ["USDCMock", addresses.USDCMock],
+      ["PriceConsumerV3", addresses.PriceConsumerV3],
+    ];
+
+    const missing = required.filter(([, v]) => !isAddr(v));
+    if (!missing.length) return null;
+
+    return `Missing/invalid addresses: ${missing
+      .map(([k, v]) => `${k}=${String(v)}`)
+      .join(", ")}`;
+  }, [isConnected, addresses, chainId]);
+
+  // ---- init provider/signer/contracts (NO eth_requestAccounts) ----
   useEffect(() => {
+    let cancelled = false;
+
     async function init() {
+      setLoading(true);
+      setError(null);
+
+      setProvider(null);
+      setSigner(null);
+      setUsdc(null);
+      setSwap(null);
+      setPriceConsumer(null);
+
       if (!window.ethereum) {
-        setError("No wallet found (window.ethereum is missing).");
+        setError("No wallet found (window.ethereum missing).");
+        setLoading(false);
+        return;
+      }
+      if (!isConnected || !eoaAddress) {
+        setLoading(false);
+        return;
+      }
+      if (missingConfig) {
+        setError(missingConfig);
         setLoading(false);
         return;
       }
 
       try {
         const _provider = new ethers.BrowserProvider(window.ethereum);
-        await _provider.send("eth_requestAccounts", []);
         const _signer = await _provider.getSigner();
-        const userAddr = await _signer.getAddress();
 
         const usdcContract = new ethers.Contract(
           addresses.USDCMock,
@@ -62,71 +119,90 @@ export function useSwap(activeWalletAddress) {
           _signer
         );
 
+        const consumer = new ethers.Contract(
+          addresses.PriceConsumerV3,
+          PriceConsumerABI.abi,
+          _provider
+        );
+
+        if (cancelled) return;
+
         setProvider(_provider);
         setSigner(_signer);
-        setEoaAddress(userAddr);
         setUsdc(usdcContract);
         setSwap(swapContract);
+        setPriceConsumer(consumer);
       } catch (e) {
         console.error("useSwap init error:", e);
-        setError(e?.message ?? "Init error");
+        if (!cancelled) setError(e?.message ?? "Init error");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     init();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [isConnected, eoaAddress, chainId, addresses, missingConfig]);
 
   const getSmartWallet = useCallback(() => {
     if (!signer || !activeAddress) return null;
     return new ethers.Contract(activeAddress, SmartWalletArtifact.abi, signer);
   }, [signer, activeAddress]);
 
-  // ---- refresh balances + price ----
+  // ---- refresh ----
   const refresh = useCallback(async () => {
-    if (!provider || !activeAddress || !usdc || !swap) return;
+    if (!provider || !activeAddress || !usdc || !swap || !priceConsumer) return;
 
     try {
+      setError(null);
+
       const [ethBal, usdcBalRaw] = await Promise.all([
         provider.getBalance(activeAddress),
         usdc.balanceOf(activeAddress),
       ]);
 
-      // price + rate (on chain quote)
-      const price1e8 = await swap.getEthUsdPrice1e8?.();
       const oneEth = ethers.parseEther("1");
       const rateUsdc = await swap.quoteBuyUsdc(oneEth);
 
+      // price from PriceConsumerV3
+      const dec = Number(await priceConsumer.getDecimals());
+      const latest = await priceConsumer.getLatestPrice();
+      const latestBig = typeof latest === "bigint" ? latest : BigInt(latest);
+
       setEthBalance(ethBal);
       setUsdcBalance(usdcBalRaw);
-
-      if (price1e8 !== undefined) setEthUsdPrice(Number(price1e8) / 1e8);
       setEthToUsdcRate(Number(ethers.formatUnits(rateUsdc, 6)));
+
+      if (latestBig > 0n) {
+        setEthUsdPrice(Number(latestBig) / Math.pow(10, dec));
+      } else {
+        setEthUsdPrice(null);
+      }
     } catch (e) {
       console.error("useSwap refresh error:", e);
-      setError(e?.message ?? "Refresh error");
+      setError(e?.shortMessage || e?.message || "Refresh error");
     }
-  }, [provider, activeAddress, usdc, swap]);
+  }, [provider, activeAddress, usdc, swap, priceConsumer]);
 
   useEffect(() => {
-    if (!provider || !activeAddress || !usdc || !swap) return;
+    if (!provider || !activeAddress || !usdc || !swap || !priceConsumer) return;
     refresh();
-    const id = setInterval(refresh, 3000);
+    const id = setInterval(refresh, REFRESH_MS);
     return () => clearInterval(id);
-  }, [provider, activeAddress, usdc, swap, refresh]);
+  }, [provider, activeAddress, usdc, swap, priceConsumer, refresh]);
 
-  // ---- actions: buy & sell (wallet-centric) ----
+  // ---- actions ----
   const buyUsdc = useCallback(
     async (ethAmount) => {
-      if (!swap || !signer || !eoaAddress || !activeAddress) return;
+      if (!swap || !eoaAddress || !activeAddress) return;
 
       try {
         setTxPending(true);
         setError(null);
 
-        const ethWei = ethers.parseEther(ethAmount.toString());
-
+        const ethWei = ethers.parseEther(String(ethAmount));
         const quotedUsdc = await swap.quoteBuyUsdc(ethWei);
         const minUsdcOut = applySlippageBps(quotedUsdc, SLIPPAGE_BPS);
 
@@ -148,19 +224,18 @@ export function useSwap(activeWalletAddress) {
         setTxPending(false);
       }
     },
-    [swap, signer, eoaAddress, activeAddress, isSmartWallet, getSmartWallet, refresh]
+    [swap, eoaAddress, activeAddress, isSmartWallet, getSmartWallet, refresh]
   );
 
   const sellUsdc = useCallback(
     async (usdcAmount) => {
-      if (!swap || !usdc || !signer || !eoaAddress || !activeAddress) return;
+      if (!swap || !usdc || !eoaAddress || !activeAddress) return;
 
       try {
         setTxPending(true);
         setError(null);
 
-        const amount = ethers.parseUnits(usdcAmount.toString(), USDC_DECIMALS);
-
+        const amount = ethers.parseUnits(String(usdcAmount), USDC_DECIMALS);
         const quotedEth = await swap.quoteSellUsdc(amount);
         const minEthOut = applySlippageBps(quotedEth, SLIPPAGE_BPS);
 
@@ -184,13 +259,17 @@ export function useSwap(activeWalletAddress) {
         setTxPending(false);
       }
     },
-    [swap, usdc, signer, eoaAddress, activeAddress, isSmartWallet, getSmartWallet, refresh]
+    [swap, usdc, eoaAddress, activeAddress, isSmartWallet, getSmartWallet, refresh]
   );
 
   return {
     loading,
     txPending,
     error,
+
+    chainId,
+    addresses,
+    missingConfig,
 
     eoaAddress,
     activeAddress,
