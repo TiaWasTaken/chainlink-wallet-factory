@@ -32,7 +32,7 @@ export default function GasTracker() {
         setGasData({ gasPrice: gwei, maxFee, priorityFee });
         setLive(true);
 
-        // aggiornamento storico: mantiene gli ultimi 30 punti
+
         setHistory((prev) => {
           const now = new Date();
           const label = now.toLocaleTimeString([], {
@@ -156,7 +156,7 @@ export default function GasTracker() {
     animation: { duration: 800, easing: "easeInOutQuad" },
     interaction: {
       intersect: false,
-      mode: "index", // tooltip segue il mouse
+      mode: "index",
     },
     plugins: {
       legend: { display: false },

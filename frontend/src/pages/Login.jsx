@@ -9,7 +9,7 @@ export default function Login() {
   const navigate = useNavigate();
   const { open } = useWeb3Modal();
 
-  // wagmi status evita il "flash" quando auto-ripristina la sessione
+
   const { address, isConnected, status } = useAccount();
   const chainId = useChainId();
 
@@ -33,7 +33,7 @@ export default function Login() {
     }
   }
 
-  // ✅ Evita che la Login lampeggi per 1 secondo mentre wagmi "reconnecting"
+
   if (status === "reconnecting" || status === "connecting") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0e001a] via-[#15002b] to-[#220044] text-gray-100">

@@ -20,7 +20,7 @@ export default function Navbar({ variant = "home" }) {
   const isHardhat = chainId === 31337;
   const isSepolia = chainId === 11155111;
 
-  // --- UI state
+
   const [ethBalance, setEthBalance] = useState(null);
   const [prevEth, setPrevEth] = useState(null);
 
@@ -37,7 +37,7 @@ export default function Navbar({ variant = "home" }) {
   const balanceChanged =
     prevEth !== null && ethBalance !== null && prevEth !== ethBalance;
 
-  // Reset state when disconnected
+
   useEffect(() => {
     if (!isConnected) {
       setEthBalance(null);
@@ -50,7 +50,7 @@ export default function Navbar({ variant = "home" }) {
     }
   }, [isConnected]);
 
-  // Random avatar
+
   useEffect(() => {
     if (!address) {
       setAvatar(null);
@@ -61,9 +61,9 @@ export default function Navbar({ variant = "home" }) {
     setAvatar(`/avatars/avatar${randomIndex}.png`);
   }, [address]);
 
-  // Provider:
-  // - Hardhat: deterministic RPC (localhost)
-  // - Sepolia/others: wallet provider (MetaMask / Web3Modal)
+
+
+
   const ethersProvider = useMemo(() => {
     if (!isConnected || !address) return null;
 
@@ -78,7 +78,7 @@ export default function Navbar({ variant = "home" }) {
     return null;
   }, [isConnected, address, isHardhat]);
 
-  // Contracts (guarded: only create if address exists)
+
   const usdcContract = useMemo(() => {
     if (!ethersProvider) return null;
     if (!addresses?.USDCMock) return null;
@@ -86,7 +86,7 @@ export default function Navbar({ variant = "home" }) {
     return new ethers.Contract(addresses.USDCMock, USDCMockABI.abi, ethersProvider);
   }, [ethersProvider]);
 
-  // Hardhat-only aggregator
+
   const aggContract = useMemo(() => {
     if (!ethersProvider) return null;
     if (!isHardhat) return null;
@@ -99,7 +99,7 @@ export default function Navbar({ variant = "home" }) {
     );
   }, [ethersProvider, isHardhat]);
 
-  // Swap contract exists on both hardhat and sepolia
+
   const swapContract = useMemo(() => {
     if (!ethersProvider) return null;
     if (!addresses?.EthUsdcSwap) return null;
@@ -122,24 +122,24 @@ export default function Navbar({ variant = "home" }) {
   const fetchUsdcBalance = async () => {
     if (!usdcContract || !address) return;
 
-    const raw = await usdcContract.balanceOf(address); // 6 decimals
+    const raw = await usdcContract.balanceOf(address);
     setUsdcBalance(Number(ethers.formatUnits(raw, 6)));
   };
 
   const fetchEthUsdPrice = async () => {
-    // Prefer swap (works on Sepolia + Hardhat)
+
     if (swapContract) {
       const price1e8 = await swapContract.getEthUsdPrice1e8();
       const price = Number(price1e8) / 1e8;
-      // se viene NaN o 0 “strano”, lo teniamo comunque numerico
+
       setEthUsdPrice(Number.isFinite(price) ? price : null);
       return;
     }
 
-    // Hardhat-only fallback
+
     if (!aggContract) return;
     const roundData = await aggContract.latestRoundData();
-    const answer = roundData[1]; // BigInt
+    const answer = roundData[1];
     const decimals = await aggContract.decimals();
     const dec = typeof decimals === "bigint" ? Number(decimals) : Number(decimals);
 
@@ -169,7 +169,7 @@ export default function Navbar({ variant = "home" }) {
     }
   };
 
-  // Refresh every 10s while connected on supported networks
+
   useEffect(() => {
     const supported = isHardhat || isSepolia;
     if (!isConnected || !address || !supported || !ethersProvider) return;
@@ -177,10 +177,10 @@ export default function Navbar({ variant = "home" }) {
     refreshAll();
     const interval = setInterval(refreshAll, 10000);
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [isConnected, address, isHardhat, isSepolia, ethersProvider, swapContract, usdcContract]);
 
-  // Click outside closes popovers
+
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -201,7 +201,7 @@ export default function Navbar({ variant = "home" }) {
 
   const shortAccount = address ? `${address.slice(0, 8)}…${address.slice(-6)}` : "";
 
-  // IMPORTANT: non usare truthy check (0 è falsy)
+
   const oneEthInUsdc = ethUsdPrice !== null ? ethUsdPrice : null;
   const oneUsdcInEth = ethUsdPrice !== null && ethUsdPrice !== 0 ? 1 / ethUsdPrice : null;
 
@@ -251,7 +251,7 @@ export default function Navbar({ variant = "home" }) {
       shadow-[0_4px_30px_rgba(0,0,0,0.4)] ring-1 ring-white/5"
     >
       <div className="w-full flex justify-between items-center px-8 py-4 gap-5 max-sm:px-4 max-sm:py-3 max-sm:gap-3">
-        {/* Left */}
+
         <div
           onClick={handleLogoClick}
           className={`flex items-center gap-3 select-none ${variant === "home" ? "cursor-pointer" : "cursor-default"
@@ -263,7 +263,7 @@ export default function Navbar({ variant = "home" }) {
             className="w-8 h-8 transition-transform hover:scale-110 duration-200 drop-shadow-[0_0_6px_rgba(145,94,255,0.35)]"
           />
 
-          {/* Desktop/tablet: testo visibile. Mobile: solo logo */}
+
           <h1 className="text-lg font-bold text-white hidden sm:block">
             <span className="text-[#915eff]">Ether</span>Connect
           </h1>
@@ -281,7 +281,7 @@ export default function Navbar({ variant = "home" }) {
               </button>
             ) : (
               <>
-                {/* BALANCE */}
+
                 <div className="relative">
                   <button
                     type="button"
@@ -387,7 +387,7 @@ export default function Navbar({ variant = "home" }) {
                   )}
                 </div>
 
-                {/* AVATAR */}
+
                 <div className="relative">
                   {avatar ? (
                     <img

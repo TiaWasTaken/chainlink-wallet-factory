@@ -12,8 +12,8 @@ export default function useOraclePrice() {
   const [updatedAt, setUpdatedAt] = useState(null);
   const [answeredInRound, setAnsweredInRound] = useState(null);
 
-  // Ora la "fonte" è lo swap, che internamente legge il feed Chainlink/mock
-  const feedAddress = addresses.EthUsdFeed; // lo scriviamo nel deploy_all.js
+
+  const feedAddress = addresses.EthUsdFeed;
   const consumerAddress = addresses.EthUsdcSwap;
 
   const [network, setNetwork] = useState({
@@ -28,7 +28,7 @@ export default function useOraclePrice() {
     try {
       if (!window.ethereum) return;
 
-      // Wallet-based provider: funziona su desktop + mobile (MetaMask browser)
+
       const provider = new ethers.BrowserProvider(window.ethereum);
 
       const net = await provider.getNetwork();
@@ -43,14 +43,14 @@ export default function useOraclePrice() {
         provider
       );
 
-      // prezzo ETH/USD normalizzato 1e8
+
       const price1e8 = await swap.getEthUsdPrice1e8();
       const formatted = Number(price1e8) / 1e8;
 
-      // i campi roundId/updatedAt/answeredInRound non li abbiamo dallo swap
-      // (a meno di leggere il feed direttamente). Li lasciamo null e UI li gestirà.
+
+
       setRoundId(null);
-      setUpdatedAt(Math.floor(Date.now() / 1000)); // fallback: "adesso"
+      setUpdatedAt(Math.floor(Date.now() / 1000));
       setAnsweredInRound(null);
 
       if (lastPrice.current !== null) {

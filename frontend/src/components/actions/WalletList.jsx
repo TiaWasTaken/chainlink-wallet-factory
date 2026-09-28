@@ -1,4 +1,4 @@
-// src/components/actions/WalletList.jsx
+
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import useWalletFactory from "../../hooks/useWalletFactory";
@@ -8,7 +8,7 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
   const [accounts, setAccounts] = useState([]);
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
 
-  // “requestedAccount” = quello che l’utente seleziona nel dropdown (per view/filtri)
+
   const [requestedAccount, setRequestedAccount] = useState("");
   const [switchHint, setSwitchHint] = useState("");
 
@@ -21,12 +21,12 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
     }
 
     try {
-      // passivo: NON forza popup
+
       const accs = await window.ethereum.request({ method: "eth_accounts" });
       const list = Array.isArray(accs) ? accs : [];
       setAccounts(list);
 
-      // se non ho ancora un requestedAccount, usa currentAccount o accs[0]
+
       setRequestedAccount((prev) => prev || currentAccount || list[0] || "");
     } catch (err) {
       console.error("Error loading MetaMask accounts:", err);
@@ -35,7 +35,7 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
     }
   }, [hasProvider, currentAccount]);
 
-  // Init + listeners
+
   useEffect(() => {
     loadAccounts();
     if (!hasProvider) return;
@@ -44,17 +44,17 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
       const next = Array.isArray(accs) ? accs : [];
       setAccounts(next);
 
-      // MetaMask ha cambiato DAVVERO account attivo => reset hint e riallinea selection
+
       setSwitchHint("");
       setRequestedAccount(next[0] || "");
       setActiveWallet?.(null);
     };
 
     const handleChainChanged = () => {
-      // rete cambiata => reset selezioni “fantasma”
+
       setSwitchHint("");
       setActiveWallet?.(null);
-      // ricarica accounts
+
       loadAccounts();
     };
 
@@ -67,7 +67,7 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
     };
   }, [hasProvider, loadAccounts, setActiveWallet]);
 
-  // Se arriva currentAccount dal parent (account realmente attivo), aggiorna selection di default
+
   useEffect(() => {
     if (currentAccount) {
       setRequestedAccount((prev) => prev || currentAccount);
@@ -76,7 +76,7 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
 
   const isConnected = !!currentAccount;
 
-  // se alcuni wallet non ritornano la lista accounts, fallback
+
   const accountOptions = accounts?.length ? accounts : (currentAccount ? [currentAccount] : []);
 
   const selected = requestedAccount || currentAccount || "";
@@ -86,8 +86,8 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
     !!currentAccount &&
     selected.toLowerCase() === currentAccount.toLowerCase();
 
-  // Hook: deve seguire l’account selezionato per VISUALIZZARE wallets di quell’utente
-  // (firma/transazioni rimangono sull’account attivo in MetaMask)
+
+
   const { wallets, isBusy, createWallet } = useWalletFactory(selected);
 
   const hasWallets = useMemo(
@@ -107,7 +107,7 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
       const list = Array.isArray(accs) ? accs : [];
       setAccounts(list);
 
-      // MetaMask imposta accs[0] come attivo
+
       setRequestedAccount(list[0] || "");
     } catch (e) {
       console.warn("Connect canceled:", e?.message);
@@ -118,7 +118,7 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
     setRequestedAccount(targetAccount);
     setActiveWallet?.(null);
 
-    // Non possiamo forzare lo switch attivo: quindi mostriamo hint se target != active
+
     if (currentAccount && targetAccount) {
       if (targetAccount.toLowerCase() !== currentAccount.toLowerCase()) {
         setSwitchHint(
@@ -167,7 +167,7 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
       transition={{ duration: 0.35 }}
       className="flex flex-col items-center w-full max-w-5xl px-4 sm:px-6"
     >
-      {/* HEADER */}
+
       <div className="w-full mb-6 sm:mb-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
           <h3 className="text-xl sm:text-2xl font-semibold text-white tracking-tight">
@@ -212,7 +212,7 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
           </div>
         </div>
 
-        {/* HINT */}
+
         {switchHint && (
           <p className="mt-3 text-sm text-amber-200/90">{switchHint}</p>
         )}
@@ -232,14 +232,14 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
         )}
       </div>
 
-      {/* SLOT fisso per evitare layout shift */}
+
       <div className="min-h-[24px] w-full mb-4">
         {isBusy && (
           <p className="text-gray-400 animate-pulse text-sm">Working on it…</p>
         )}
       </div>
 
-      {/* LISTA WALLET */}
+
       {hasWallets ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 w-full">
           {wallets.map((wallet) => (
@@ -248,7 +248,7 @@ export default function WalletList({ currentAccount, setActiveWallet }) {
                 walletAddress={wallet}
                 isActive={false}
                 onSelect={(addr) => {
-                  // selezione wallet solo se l’account selezionato è quello attivo
+
                   if (!isOwnAccount) return;
                   setActiveWallet?.(addr);
                 }}

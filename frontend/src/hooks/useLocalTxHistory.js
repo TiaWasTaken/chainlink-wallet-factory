@@ -3,7 +3,7 @@ import { ethers } from "ethers";
 
 const MAX_ITEMS = 10;
 
-// --- helpers ---
+
 const safeJsonParse = (raw, fallback) => {
   try {
     return raw ? JSON.parse(raw) : fallback;
@@ -12,16 +12,16 @@ const safeJsonParse = (raw, fallback) => {
   }
 };
 
-// Migrazione retro-compatibile:
-// - Se trovi vecchie tx che non hanno assetIn/assetOut, le deduci da type
-// - Mantieni tx.amount come fallback
+
+
+
 const normalizeTx = (tx) => {
   if (!tx || typeof tx !== "object") return null;
 
   const type = tx.type || tx.txType || "UNKNOWN";
   const status = tx.status || "unknown";
 
-  // se già nuovo schema, ok
+
   if (tx.assetIn || tx.assetOut || tx.amountIn || tx.amountOut) {
     return {
       hash: tx.hash ?? "N/A",
@@ -91,8 +91,8 @@ const normalizeTx = (tx) => {
   };
 };
 
-// Determina la key storage in base a chainId + account.
-// Se non hai account, mettiamo "anon" (ma idealmente sempre account).
+
+
 const makeKey = (chainId, account) => {
   const a = (account || "anon").toLowerCase();
   return `tx_history:${String(chainId)}:${a}`;
@@ -101,7 +101,7 @@ const makeKey = (chainId, account) => {
 export default function useLocalTxHistory(account) {
   const [chainId, setChainId] = useState(null);
 
-  // Leggi chainId live (e aggiorna su chainChanged)
+
   useEffect(() => {
     let alive = true;
 
@@ -113,7 +113,7 @@ export default function useLocalTxHistory(account) {
         if (!alive) return;
         setChainId(Number(net.chainId));
       } catch {
-        // noop
+
       }
     };
 
@@ -121,7 +121,7 @@ export default function useLocalTxHistory(account) {
 
     if (window.ethereum) {
       const onChainChanged = () => {
-        // dopo chain change, rileggo
+
         readChain();
       };
       window.ethereum.on("chainChanged", onChainChanged);
@@ -137,7 +137,7 @@ export default function useLocalTxHistory(account) {
   }, []);
 
   const storageKey = useMemo(() => {
-    // se chainId non c'è ancora, usiamo "unknown" per non buttare errori
+
     return makeKey(chainId ?? "unknown", account);
   }, [chainId, account]);
 
@@ -150,7 +150,7 @@ export default function useLocalTxHistory(account) {
     return normalized;
   });
 
-  // Quando cambia storageKey (account o chain), ricarica history corretta
+
   useEffect(() => {
     const saved = localStorage.getItem(storageKey);
     const parsed = safeJsonParse(saved, []);
@@ -160,12 +160,12 @@ export default function useLocalTxHistory(account) {
     setHistory(normalized);
   }, [storageKey]);
 
-  // Persist
+
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(history.slice(0, MAX_ITEMS)));
   }, [history, storageKey]);
 
-  // Aggiunge una transazione, rimuove pending duplicate e mantiene max 10
+
   const addTx = useCallback(
     (tx) => {
       const nTx = normalizeTx(tx);
@@ -174,9 +174,9 @@ export default function useLocalTxHistory(account) {
       setHistory((prev) => {
         let updated = [...prev];
 
-        // Se arriva una transazione di successo, rimuovi pending duplicate:
-        // - stesso hash (se esiste)
-        // - oppure stesso tipo + recipient (fallback)
+
+
+
         if (
           nTx.status === "wallet_created" ||
           nTx.status === "wallet_created_event" ||

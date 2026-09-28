@@ -1,4 +1,4 @@
-// src/App.jsx
+
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAccount } from "wagmi";
 
@@ -9,7 +9,7 @@ export default function App() {
   const { address, isConnected } = useAccount();
 
   const account = isConnected ? address : null;
-  const setAccount = () => {}; // compatibilità temporanea
+  const setAccount = () => {};
 
   return (
     <BrowserRouter>

@@ -28,7 +28,7 @@ export default function EtherMenu({ setActiveWallet }) {
   const { address } = useAccount();
   const account = address ?? null;
 
-  // default su wallets per evitare “null state” e rendere tutto più fluido
+
   const [selected, setSelected] = useState("wallets");
 
   const menuItems = useMemo(
@@ -86,7 +86,7 @@ export default function EtherMenu({ setActiveWallet }) {
         Explore the App
       </motion.h2>
 
-      {/* Menu: desktop = wrap center | mobile = horizontal scroll snap */}
+
       <motion.div
         initial={{ opacity: 0, y: 25 }}
         animate={{ opacity: 1, y: 0 }}
@@ -142,7 +142,7 @@ export default function EtherMenu({ setActiveWallet }) {
           })}
         </div>
 
-        {/* hint mobile */}
+
         <div className="mt-3 text-xs text-gray-500 sm:hidden">
           Swipe horizontally to see all sections
         </div>

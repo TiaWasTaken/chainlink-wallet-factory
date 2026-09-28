@@ -1,4 +1,4 @@
-// src/hooks/useSwap.js
+
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { ethers } from "ethers";
 import { useAccount, useChainId } from "wagmi";
@@ -11,7 +11,7 @@ import PriceConsumerABI from "../abi/PriceConsumerV3.json";
 import { getAddresses } from "../abi/addressesByChain";
 
 const USDC_DECIMALS = 6;
-const SLIPPAGE_BPS = 100n; // 1%
+const SLIPPAGE_BPS = 100n;
 const REFRESH_MS = 10_000;
 
 function applySlippageBps(amount, bps) {
@@ -31,10 +31,10 @@ export function useSwap(activeWalletAddress) {
   const [swap, setSwap] = useState(null);
   const [priceConsumer, setPriceConsumer] = useState(null);
 
-  const [ethBalance, setEthBalance] = useState(null); // BigInt
-  const [usdcBalance, setUsdcBalance] = useState(null); // BigInt
-  const [ethUsdPrice, setEthUsdPrice] = useState(null); // number
-  const [ethToUsdcRate, setEthToUsdcRate] = useState(null); // number
+  const [ethBalance, setEthBalance] = useState(null);
+  const [usdcBalance, setUsdcBalance] = useState(null);
+  const [ethUsdPrice, setEthUsdPrice] = useState(null);
+  const [ethToUsdcRate, setEthToUsdcRate] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [txPending, setTxPending] = useState(false);
@@ -74,7 +74,7 @@ export function useSwap(activeWalletAddress) {
       .join(", ")}`;
   }, [isConnected, addresses, chainId]);
 
-  // ---- init provider/signer/contracts (NO eth_requestAccounts) ----
+
   useEffect(() => {
     let cancelled = false;
 
@@ -121,7 +121,7 @@ export function useSwap(activeWalletAddress) {
           _signer
         );
 
-        // Read-only is enough for price consumer
+
         const consumer = new ethers.Contract(
           addresses.PriceConsumerV3,
           PriceConsumerABI.abi,
@@ -155,7 +155,7 @@ export function useSwap(activeWalletAddress) {
     return new ethers.Contract(activeAddress, SmartWalletArtifact.abi, signer);
   }, [signer, activeAddress]);
 
-  // ---- refresh ----
+
   const refresh = useCallback(async () => {
     if (!provider || !activeAddress || !usdc || !swap || !priceConsumer) return;
 
@@ -170,7 +170,7 @@ export function useSwap(activeWalletAddress) {
       const oneEth = ethers.parseEther("1");
       const rateUsdc = await swap.quoteBuyUsdc(oneEth);
 
-      // price from PriceConsumerV3 (robust BigInt parsing)
+
       const dec = Number(await priceConsumer.getDecimals());
       const latest = await priceConsumer.getLatestPrice();
       const latestBig = typeof latest === "bigint" ? latest : BigInt(latest);
@@ -178,11 +178,11 @@ export function useSwap(activeWalletAddress) {
       setEthBalance(ethBal);
       setUsdcBalance(usdcBalRaw);
 
-      // rate (1 ETH -> USDC)
+
       setEthToUsdcRate(Number(ethers.formatUnits(rateUsdc, USDC_DECIMALS)));
 
       if (latestBig > 0n) {
-        const asStr = ethers.formatUnits(latestBig, dec); // safe conversion
+        const asStr = ethers.formatUnits(latestBig, dec);
         const asNum = Number(asStr);
         setEthUsdPrice(Number.isFinite(asNum) ? asNum : null);
       } else {
@@ -201,7 +201,7 @@ export function useSwap(activeWalletAddress) {
     return () => clearInterval(id);
   }, [provider, activeAddress, usdc, swap, priceConsumer, refresh]);
 
-  // ---- actions ----
+
   const buyUsdc = useCallback(
     async (ethAmount) => {
       if (!swap || !eoaAddress || !activeAddress) return null;
@@ -258,7 +258,7 @@ export function useSwap(activeWalletAddress) {
           await refresh();
           return { tx, receipt };
         } else {
-          // approve + sell
+
           const approveTx = await usdc.approve(await swap.getAddress(), amount);
           await approveTx.wait();
 

@@ -1,4 +1,4 @@
-// src/components/actions/WalletCard.jsx
+
 import { useEffect, useMemo, useState } from "react";
 import { ethers } from "ethers";
 import { motion } from "framer-motion";
@@ -21,7 +21,7 @@ export default function WalletCard({ walletAddress, isActive, onSelect }) {
 
   const canRead = useMemo(() => !!window.ethereum && !!walletAddress, [walletAddress]);
 
-  // tieni chainId aggiornato (così quando switchi rete non leggi token sbagliato)
+
   useEffect(() => {
     let alive = true;
 
@@ -33,7 +33,7 @@ export default function WalletCard({ walletAddress, isActive, onSelect }) {
         if (!alive) return;
         setChainId(Number(net.chainId));
       } catch {
-        // noop
+
       }
     };
 
@@ -68,7 +68,7 @@ export default function WalletCard({ walletAddress, isActive, onSelect }) {
 
         const usdcAddr = addrs.USDCMock;
         if (!usdcAddr) {
-          // se su una chain non hai USDC (o non vuoi), semplicemente mostra null
+
           const ethWei = await provider.getBalance(walletAddress);
           if (!alive) return;
           setEthBalance(Number(ethers.formatEther(ethWei)));
@@ -128,7 +128,7 @@ export default function WalletCard({ walletAddress, isActive, onSelect }) {
             minHeight: 170,
           }}
         >
-          {/* FRONT */}
+
           <div
             className="absolute inset-0 rounded-2xl p-4 sm:p-5 flex flex-col justify-between"
             style={{ backfaceVisibility: "hidden" }}
@@ -160,7 +160,7 @@ export default function WalletCard({ walletAddress, isActive, onSelect }) {
             </div>
           </div>
 
-          {/* BACK */}
+
           <div
             className="absolute inset-0 rounded-2xl p-4 sm:p-5 flex flex-col justify-between"
             style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}

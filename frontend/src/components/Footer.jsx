@@ -15,7 +15,7 @@ export default function Footer() {
         transition={{ duration: 0.8 }}
         className="relative z-10 mx-auto max-w-5xl text-center text-gray-300"
       >
-        {/* Divider superiore */}
+
         <div className="w-full h-px bg-gradient-to-r from-transparent via-[#915eff]/40 to-transparent mb-10"></div>
 
         <h3 className="text-xl font-semibold text-white tracking-tight">
@@ -26,14 +26,14 @@ export default function Footer() {
           Built with Hardhat • Chainlink Oracles • React + Three.js
         </p>
 
-        {/* Links */}
+
         <div className="flex justify-center gap-6 mt-6 text-sm text-gray-400">
           <a href="https://github.com/TiaWasTaken" target="_blank" className="hover:text-purple-400 transition">GitHub</a>
           <a href="#" className="hover:text-purple-400 transition">Docs</a>
           <a href="#" className="hover:text-purple-400 transition">Smart Contract</a>
         </div>
 
-        {/* Divider inferiore */}
+
         <div className="w-full h-px bg-gradient-to-r from-transparent via-[#915eff]/30 to-transparent mt-10"></div>
 
         <p className="text-xs text-gray-500 mt-6">

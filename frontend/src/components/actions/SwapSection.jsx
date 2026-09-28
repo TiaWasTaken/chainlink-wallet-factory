@@ -1,4 +1,4 @@
-// src/components/actions/SwapSection.jsx
+
 import { useEffect, useMemo, useState } from "react";
 import { ethers } from "ethers";
 import { useAccount, useChainId } from "wagmi";
@@ -23,31 +23,31 @@ export default function SwapSection() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
 
-  // UI state
-  const [mode, setMode] = useState("buy"); // "buy" | "sell"
+
+  const [mode, setMode] = useState("buy");
   const [ethToSpend, setEthToSpend] = useState("");
   const [usdcToSell, setUsdcToSell] = useState("");
   const [selectedWallet, setSelectedWallet] = useState("");
 
-  // tx status UI
-  const [txStatus, setTxStatus] = useState(null); // null | "success" | "error"
+
+  const [txStatus, setTxStatus] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
 
   const { addTx } = useLocalTxHistory();
 
-  // Wallet list (SmartWallets)
+
   const { wallets: smartWallets, refresh: refreshWallets } = useWalletFactory(
     address || ""
   );
 
-  // active wallet for balances + swap source
+
   const activeWallet = useMemo(
     () => (selectedWallet ? selectedWallet : address),
     [selectedWallet, address]
   );
 
-  // Swap hook (chain-aware)
+
   const {
     loading,
     txPending,
@@ -58,10 +58,10 @@ export default function SwapSection() {
     activeAddress,
     isSmartWallet,
 
-    ethBalance, // BigInt (wei)
-    usdcBalance, // BigInt (6 decimals)
-    ethUsdPrice, // number
-    ethToUsdcRate, // number
+    ethBalance,
+    usdcBalance,
+    ethUsdPrice,
+    ethToUsdcRate,
 
     buyUsdc,
     sellUsdc,
@@ -100,13 +100,13 @@ export default function SwapSection() {
     return `Chain ${chainId}`;
   }, [chainId]);
 
-  // refresh smart wallets when account changes
+
   useEffect(() => {
     refreshWallets?.();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [address]);
 
-  // periodic refresh (balances + rates)
+
   useEffect(() => {
     if (!isConnected || missingConfig || !refresh) return;
 
@@ -121,7 +121,7 @@ export default function SwapSection() {
     return () => clearInterval(id);
   }, [isConnected, missingConfig, refresh]);
 
-  // --- previews ---
+
   const estimatedUsdcOut = useMemo(() => {
     if (!ethUsdPrice) return "…";
     const n = Number(ethToSpend);
@@ -138,7 +138,7 @@ export default function SwapSection() {
 
   const handleMaxEth = () => {
     if (ethBalanceNum === null) return;
-    // non vogliamo mettere 100% balance perché servono fee
+
     const safe = Math.max(0, ethBalanceNum - 0.002);
     setEthToSpend(safe > 0 ? safe.toFixed(4) : "0");
   };
@@ -148,7 +148,7 @@ export default function SwapSection() {
     setUsdcToSell(usdcBalanceNum.toFixed(2));
   };
 
-  // --- actions ---
+
   const handleBuyUsdc = async () => {
     if (missingConfig) return;
     const n = Number(ethToSpend);
@@ -219,7 +219,7 @@ export default function SwapSection() {
     }
   };
 
-  // ---------- guards ----------
+
   if (!window.ethereum) {
     return (
       <div className="mt-10 p-6 bg-[#151520]/80 border border-[#2b2b3d] rounded-2xl text-center text-gray-300 w-full max-w-xl mx-auto">
@@ -249,10 +249,10 @@ export default function SwapSection() {
     );
   }
 
-  // ---------- UI ----------
+
   return (
     <div className="bg-[#0b0b15] border border-[#1f1f2d] rounded-2xl p-4 sm:p-6 w-full max-w-4xl mx-auto shadow-lg text-white">
-      {/* Header */}
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           <Repeat className="text-purple-400 mt-1" />
@@ -299,7 +299,7 @@ export default function SwapSection() {
         </div>
       </div>
 
-      {/* Active wallet */}
+
       <div className="mt-4">
         <label className="text-xs text-gray-400 mb-1 block">
           Active wallet (balances + swap source)
@@ -330,7 +330,7 @@ export default function SwapSection() {
         </p>
       </div>
 
-      {/* Balances */}
+
       <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="bg-[#141421] rounded-xl p-4 border border-[#1f1f2d]">
           <p className="text-xs text-gray-400">ETH balance</p>
@@ -347,7 +347,7 @@ export default function SwapSection() {
         </div>
       </div>
 
-      {/* Rates (simple) */}
+
       <div className="mt-3 bg-[#141421] rounded-xl p-4 border border-[#1f1f2d]">
         <p className="text-xs text-gray-400 flex items-center gap-2">
           <ArrowLeftRight size={14} className="text-purple-400" />
@@ -379,7 +379,7 @@ export default function SwapSection() {
         </div>
       </div>
 
-      {/* Toggle BUY / SELL */}
+
       <div className="mt-4 flex bg-[#1b1b2a] rounded-xl p-1 text-sm">
         <button
           onClick={() => setMode("buy")}
@@ -403,7 +403,7 @@ export default function SwapSection() {
         </button>
       </div>
 
-      {/* BUY */}
+
       {mode === "buy" && (
         <div className="mt-4 bg-[#151520] rounded-2xl p-4 sm:p-5 border border-[#2b2b3d]">
           <div className="flex items-center justify-between gap-3">
@@ -458,7 +458,7 @@ export default function SwapSection() {
         </div>
       )}
 
-      {/* SELL */}
+
       {mode === "sell" && (
         <div className="mt-4 bg-[#151520] rounded-2xl p-4 sm:p-5 border border-[#2b2b3d]">
           <div className="flex items-center justify-between gap-3">
@@ -513,7 +513,7 @@ export default function SwapSection() {
         </div>
       )}
 
-      {/* Status */}
+
       <div className="mt-3 min-h-[20px]">
         {txStatus === "success" && (
           <p className="text-sm text-green-400">✓ Transaction confirmed on-chain.</p>

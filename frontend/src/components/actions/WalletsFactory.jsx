@@ -1,4 +1,4 @@
-// src/components/actions/WalletsFactory.jsx
+
 import React, { useState } from "react";
 import WalletList from "./WalletList";
 

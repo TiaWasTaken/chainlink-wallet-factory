@@ -16,12 +16,12 @@ export default function useWalletFactory(account) {
 
   const balanceTimerRef = useRef(null);
 
-  // per evitare listener duplicati tra chain/account
+
   const listenerKeyRef = useRef(null);
 
-  const { addTx } = useLocalTxHistory(); // <-- usa l'hook come lo hai ora
+  const { addTx } = useLocalTxHistory();
 
-  // --- helpers ---
+
   const readChainId = useCallback(async () => {
     if (!window.ethereum) throw new Error("MetaMask not found");
     const provider = new ethers.BrowserProvider(window.ethereum);
@@ -29,7 +29,7 @@ export default function useWalletFactory(account) {
     return Number(net.chainId);
   }, []);
 
-  // Initialize provider, signer, and contract (reinit also on chain change)
+
   const ensureContract = useCallback(async () => {
     if (!window.ethereum) throw new Error("MetaMask not found");
 
@@ -65,7 +65,7 @@ export default function useWalletFactory(account) {
         signer
       );
 
-      // reset UI state when switching chain or signer
+
       setWallets([]);
       setBalances({});
 
@@ -82,7 +82,7 @@ export default function useWalletFactory(account) {
     return contractRef.current;
   }, []);
 
-  // Fetch wallets for the given account (SILENT: no isBusy)
+
   const fetchWallets = useCallback(async () => {
     if (!account) return [];
     try {
@@ -97,7 +97,7 @@ export default function useWalletFactory(account) {
     }
   }, [account, ensureContract]);
 
-  // Fetch balances for a list of wallets (SILENT)
+
   const fetchBalances = useCallback(async (list) => {
     if (!list || !list.length) {
       setBalances({});
@@ -118,7 +118,7 @@ export default function useWalletFactory(account) {
     }
   }, []);
 
-  // Create a new wallet (USER ACTION: isBusy true)
+
   const createWallet = useCallback(async () => {
     if (!account) return;
 
@@ -127,7 +127,7 @@ export default function useWalletFactory(account) {
 
       const contract = await ensureContract();
 
-      // chain-aware address for logging
+
       const currentChainId = await readChainId();
       const { WalletFactory: factoryAddress } = getAddresses(currentChainId);
 
@@ -174,13 +174,13 @@ export default function useWalletFactory(account) {
     }
   }, [account, ensureContract, fetchWallets, fetchBalances, addTx, readChainId]);
 
-  // Refresh wallets and balances (silent)
+
   const refresh = useCallback(async () => {
     const list = await fetchWallets();
     await fetchBalances(list);
   }, [fetchWallets, fetchBalances]);
 
-  // Initial load + periodic balance refresh (NO layout flashing)
+
   useEffect(() => {
     let alive = true;
 
@@ -194,10 +194,10 @@ export default function useWalletFactory(account) {
 
       if (balanceTimerRef.current) clearInterval(balanceTimerRef.current);
 
-      // ogni 10s refresh balances sui wallets già in state
+
       balanceTimerRef.current = setInterval(async () => {
         if (!alive) return;
-        // usa lo state wallets più recente: non chiamiamo fetchWallets ogni volta
+
         await fetchBalances(walletsRef.current);
       }, 10000);
     };
@@ -208,16 +208,16 @@ export default function useWalletFactory(account) {
       alive = false;
       if (balanceTimerRef.current) clearInterval(balanceTimerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [account]);
 
-  // Keep latest wallets in a ref for interval use
+
   const walletsRef = useRef([]);
   useEffect(() => {
     walletsRef.current = wallets;
   }, [wallets]);
 
-  // Listen to WalletCreated events (keyed by chainId + account)
+
   useEffect(() => {
     let contract;
     let handler;

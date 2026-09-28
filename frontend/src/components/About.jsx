@@ -6,7 +6,7 @@ import { fadeIn, textVariant } from "../utils/motion";
 import { FaWallet, FaCubes, FaEthereum } from "react-icons/fa";
 import { SiChainlink } from "react-icons/si";
 
-// EtherConnect
+
 const services = [
   { title: "Smart Wallets", icon: <FaWallet size={48} color="white" /> },
   { title: "dApp Integration", icon: <FaCubes size={48} color="white" /> },
@@ -40,12 +40,12 @@ const ServiceCard = ({ index, title, icon }) => (
 
 const EthPrice = () => {
   const [price, setPrice] = useState(null);
-  const [trend, setTrend] = useState(null); // "up" | "down" | null
+  const [trend, setTrend] = useState(null);
 
   const containerRef = useRef(null);
   const lastPriceRef = useRef(null);
 
-  // floating logo
+
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const velRef = useRef({ x: 1.2, y: 1 });
 
@@ -60,7 +60,7 @@ const EthPrice = () => {
         let newX = prev.x + velRef.current.x;
         let newY = prev.y + velRef.current.y;
 
-        // bounds are centered, so use half width/height
+
         const minX = -box.width / 2 + size / 2;
         const maxX = box.width / 2 - size / 2;
         const minY = -box.height / 2 + size / 2;
@@ -77,7 +77,7 @@ const EthPrice = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // price fetch (less spammy)
+
   useEffect(() => {
     let alive = true;
 
@@ -95,7 +95,7 @@ const EthPrice = () => {
         if (last !== null && last !== undefined) {
           if (newPrice > last) setTrend("up");
           else if (newPrice < last) setTrend("down");
-          // se uguale, non cambiare trend (evita flicker)
+
         }
 
         setPrice(newPrice);
@@ -106,7 +106,7 @@ const EthPrice = () => {
     };
 
     fetchPrice();
-    const interval = setInterval(fetchPrice, 5000); // 5s (più stabile)
+    const interval = setInterval(fetchPrice, 5000);
     return () => {
       alive = false;
       clearInterval(interval);
@@ -168,7 +168,7 @@ const About = () => {
       id="about"
       className="max-w-7xl mx-auto px-4 sm:px-6 mt-24 sm:mt-32 pb-20 sm:pb-24 relative z-20 bg-[#060816]"
     >
-      {/* Header row */}
+
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-8">
         <div className="max-w-3xl">
           <motion.div variants={textVariant()}>
@@ -197,13 +197,13 @@ const About = () => {
           </motion.p>
         </div>
 
-        {/* ETH price box */}
+
         <div className="lg:pt-2 flex justify-start lg:justify-end">
           <EthPrice />
         </div>
       </div>
 
-      {/* Services */}
+
       <div className="mt-14 sm:mt-20 pb-10 sm:pb-[100px]">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
           {services.map((service, index) => (

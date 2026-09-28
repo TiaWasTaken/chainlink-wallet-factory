@@ -1,4 +1,4 @@
-// src/components/actions/SendEth.jsx
+
 import { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import useWalletFactory from "../../hooks/useWalletFactory";

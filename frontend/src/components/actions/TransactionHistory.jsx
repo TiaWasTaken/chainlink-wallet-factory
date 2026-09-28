@@ -14,7 +14,7 @@ import useLocalTxHistory from "../../hooks/useLocalTxHistory";
 export default function TransactionHistory() {
   const { history, clearTx } = useLocalTxHistory();
 
-  // Mappa status → stile
+
   const getStatusStyle = (status) => {
     switch (status) {
       case "success":
@@ -65,7 +65,7 @@ export default function TransactionHistory() {
     if (v === null || v === undefined || v === "") return "—";
     const n = Number(v);
     if (Number.isNaN(n)) return String(v);
-    // per ETH spesso vuoi 4-6 decimali, per USDC 2
+
     return n.toLocaleString(undefined, {
       minimumFractionDigits: 0,
       maximumFractionDigits: decimals,
@@ -96,12 +96,12 @@ export default function TransactionHistory() {
       return `${inAmt} ETH → ${shortAddr(tx.recipient || tx.to)}`;
     }
 
-    // Wallet created
+
     if (t.includes("WALLET") && t.includes("CREATED")) {
       return `Wallet created → ${shortAddr(tx.to || tx.recipient)}`;
     }
 
-    // fallback generico
+
     const amt = tx.amountIn ?? tx.amount ?? "—";
     const asset = tx.assetIn ?? "ETH";
     return `${formatAmount(amt, 6)} ${asset} → ${shortAddr(tx.recipient || tx.to)}`;
@@ -186,7 +186,7 @@ export default function TransactionHistory() {
         </div>
       )}
 
-      {/* Scrollbar invisibile */}
+
       <style jsx global>{`
         .hide-scrollbar::-webkit-scrollbar {
           display: none;

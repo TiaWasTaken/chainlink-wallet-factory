@@ -1,4 +1,4 @@
-// src/components/actions.config.js
+
 export const ACTIONS = [
   {
     id: "wallets",
