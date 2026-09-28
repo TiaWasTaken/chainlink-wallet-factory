@@ -7,7 +7,7 @@ describe("SmartWallet", function () {
   beforeEach(async () => {
     [owner, other] = await ethers.getSigners();
     SmartWallet = await ethers.getContractFactory("SmartWallet");
-    wallet = await SmartWallet.deploy(owner.address); // <-- passiamo l’owner
+    wallet = await SmartWallet.deploy(owner.address);
     await wallet.waitForDeployment();
   });
 

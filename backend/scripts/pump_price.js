@@ -1,4 +1,4 @@
-// scripts/pump_price.js
+
 const { JsonRpcProvider, Contract } = require("ethers");
 const fs = require("fs");
 const path = require("path");

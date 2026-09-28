@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -9,7 +9,7 @@ interface IEthUsdcSwap {
     function buyUsdc(address recipient) external payable returns (uint256 amountUsdc);
     function sellUsdc(address recipient, uint256 amountUsdc) external returns (uint256 amountEth);
 
-    // quote helpers (nuovi)
+
     function quoteBuyUsdc(uint256 ethAmountWei) external view returns (uint256 amountUsdc);
     function quoteSellUsdc(uint256 amountUsdc) external view returns (uint256 amountEth);
 }
@@ -62,8 +62,8 @@ contract SmartWallet is Ownable, ReentrancyGuard {
         emit TokenSent(token, to, amount);
     }
 
-    /// ✅ ETH -> USDC con slippage protection
-    /// minUsdcOut è in 6 decimali
+
+
     function swapEthToUsdc(uint256 ethAmountWei, uint256 minUsdcOut)
         external
         onlyOwner
@@ -73,7 +73,7 @@ contract SmartWallet is Ownable, ReentrancyGuard {
         require(ethAmountWei > 0, "Zero amount");
         require(address(this).balance >= ethAmountWei, "ETH insufficiente");
 
-        // quote on-chain
+
         uint256 quoted = swap.quoteBuyUsdc(ethAmountWei);
         require(quoted >= minUsdcOut, "Slippage: minUsdcOut");
 
@@ -82,8 +82,8 @@ contract SmartWallet is Ownable, ReentrancyGuard {
         emit SwapEthToUsdc(address(this), ethAmountWei, usdcOut);
     }
 
-    /// ✅ USDC -> ETH con slippage protection
-    /// minEthOut è in wei
+
+
     function swapUsdcToEth(uint256 usdcAmount, uint256 minEthOut)
         external
         onlyOwner

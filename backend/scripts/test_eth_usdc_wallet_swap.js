@@ -36,7 +36,7 @@ async function main() {
   console.log("USDCMock:", usdcAddress);
   console.log("EthUsdcSwap:", swapAddress);
 
-  // Attach contracts
+
   const WalletFactory = await ethers.getContractFactory("WalletFactory");
   const factory = WalletFactory.attach(factoryAddress);
 
@@ -45,9 +45,9 @@ async function main() {
 
   const swap = await ethers.getContractAt("EthUsdcSwap", swapAddress);
 
-  // -----------------------
-  // [1] Create wallet
-  // -----------------------
+
+
+
   console.log("\n[1] Creazione side wallet...");
   const tx = await factory.connect(owner).createWallet();
   const receipt = await tx.wait();
@@ -70,9 +70,9 @@ async function main() {
   const SmartWallet = await ethers.getContractFactory("SmartWallet");
   const wallet = SmartWallet.attach(walletAddress);
 
-  // -----------------------
-  // [2] Fund wallet with ETH
-  // -----------------------
+
+
+
   console.log("\n[2] Invio 2 ETH al side wallet...");
   await (
     await owner.sendTransaction({
@@ -81,7 +81,7 @@ async function main() {
     })
   ).wait();
 
-  // Snapshot iniziali
+
   const eoaEth0 = await ethers.provider.getBalance(owner.address);
   const walletEth0 = await ethers.provider.getBalance(walletAddress);
   const walletUsdc0 = await usdc.balanceOf(walletAddress);
@@ -90,13 +90,13 @@ async function main() {
   console.log("Wallet ETH (inizio):", fmtEth(walletEth0));
   console.log("Wallet USDC (inizio):", fmtUsdc(walletUsdc0));
 
-  // -----------------------
-  // [3] Swap ETH -> USDC (dal WALLET)
-  // -----------------------
+
+
+
   console.log("\n[3] Swap ETH -> USDC (chiamata al wallet, paga il wallet)...");
   const ethIn = ethers.parseEther("0.5");
 
-  // quote e minOut (1% slippage)
+
   const quotedUsdc = await swap.quoteBuyUsdc(ethIn);
   const minUsdcOut = (quotedUsdc * 99n) / 100n;
 
@@ -115,13 +115,13 @@ async function main() {
   console.log("Wallet ETH (dopo swap1):", fmtEth(walletEth1), "(deve scendere di ~0.5 ETH)");
   console.log("Wallet USDC (dopo swap1):", fmtUsdc(walletUsdc1), "(deve salire)");
 
-  // -----------------------
-  // [4] Swap USDC -> ETH (dal WALLET)
-  // -----------------------
-  console.log("\n[4] Swap USDC -> ETH (chiamata al wallet, vende USDC del wallet)...");
-  const usdcIn = (walletUsdc1 * 50n) / 100n; // 50%
 
-  // quote e minOut (1% slippage)
+
+
+  console.log("\n[4] Swap USDC -> ETH (chiamata al wallet, vende USDC del wallet)...");
+  const usdcIn = (walletUsdc1 * 50n) / 100n;
+
+
   const quotedEth = await swap.quoteSellUsdc(usdcIn);
   const minEthOut = (quotedEth * 99n) / 100n;
 
@@ -141,9 +141,9 @@ async function main() {
   console.log("Wallet ETH (dopo swap2):", fmtEth(walletEth2), "(deve risalire)");
   console.log("Wallet USDC (dopo swap2):", fmtUsdc(walletUsdc2), "(deve scendere)");
 
-  // -----------------------
-  // [5] Sanity checks (fail fast)
-  // -----------------------
+
+
+
   console.log("\n[5] Sanity checks...");
 
   if (walletEth1 >= walletEth0) {

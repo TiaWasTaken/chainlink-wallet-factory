@@ -14,12 +14,12 @@ async function main() {
   const factory = Factory.attach(factoryAddr);
 
   console.log("User:", user.address);
-  // createWallet()
+
   const tx = await factory.connect(user).createWallet();
   const rc = await tx.wait();
   console.log("createWallet tx:", rc.hash);
 
-  // getWallets(user)
+
   const wallets = await factory.getWallets(user.address);
   console.log("Wallets dell'utente:", wallets);
 }

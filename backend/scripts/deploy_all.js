@@ -5,7 +5,7 @@ const { ethers } = hre;
 
 const FEEDS = {
   sepolia: {
-    ETH_USD: "0x694AA1769357215DE4FAC081bf1f309aDC325306", // Chainlink ETH/USD Sepolia
+    ETH_USD: "0x694AA1769357215DE4FAC081bf1f309aDC325306",
   },
 };
 
@@ -28,17 +28,17 @@ async function main() {
   console.log("Network:", networkName, "chainId:", chainId);
   console.log("Deployer:", deployer.address);
 
-  // ------------------------
-  // 1) MockToken
-  // ------------------------
+
+
+
   const Token = await ethers.getContractFactory("MockToken");
   const mockToken = await Token.deploy(ethers.parseEther("1000000"));
   await mockToken.waitForDeployment();
   console.log("MockToken:", mockToken.target);
 
-  // ------------------------
-  // 2) Feed ETH/USD: mock su locale, vero su Sepolia
-  // ------------------------
+
+
+
   let ethUsdFeedAddress;
 
   if (networkName === "sepolia") {
@@ -54,9 +54,9 @@ async function main() {
     ethUsdFeedAddress = mockAggregator.target;
   }
 
-  // ------------------------
-  // 3) PriceConsumerV3
-  // ------------------------
+
+
+
   const PriceConsumer = await ethers.getContractFactory("PriceConsumerV3");
   const priceConsumer = await PriceConsumer.deploy();
   await priceConsumer.waitForDeployment();
@@ -65,9 +65,9 @@ async function main() {
   const txSetFeed = await priceConsumer.setPriceFeed(ethUsdFeedAddress);
   await txSetFeed.wait();
 
-  // ------------------------
-  // 4) OraclePrice (solo locale)
-  // ------------------------
+
+
+
   let oracleAddress = null;
   if (networkName !== "sepolia") {
     const Oracle = await ethers.getContractFactory("OraclePrice");
@@ -79,34 +79,34 @@ async function main() {
     console.log("Skipping OraclePrice on Sepolia (mock-based contract).");
   }
 
-  // ------------------------
-  // 5) USDCMock
-  // ------------------------
+
+
+
   const USDCMock = await ethers.getContractFactory("USDCMock");
   const usdcMock = await USDCMock.deploy();
   await usdcMock.waitForDeployment();
   console.log("USDCMock:", usdcMock.target);
 
-  // ------------------------
-  // 6) EthUsdcSwap
-  // ------------------------
+
+
+
   const EthUsdcSwap = await ethers.getContractFactory("EthUsdcSwap");
   const ethUsdcSwap = await EthUsdcSwap.deploy(usdcMock.target, ethUsdFeedAddress);
   await ethUsdcSwap.waitForDeployment();
   console.log("EthUsdcSwap:", ethUsdcSwap.target);
 
-  // ------------------------
-  // 7) WalletFactory
-  // ------------------------
+
+
+
   const Factory = await ethers.getContractFactory("WalletFactory");
   const walletFactory = await Factory.deploy(ethUsdcSwap.target, usdcMock.target);
   await walletFactory.waitForDeployment();
   console.log("WalletFactory:", walletFactory.target);
 
-  // ------------------------
-  // 8) Seed liquidità swap
-  // ------------------------
-  const usdcLiquidity = ethers.parseUnits("1000000", 6); // 1,000,000 USDC
+
+
+
+  const usdcLiquidity = ethers.parseUnits("1000000", 6);
   const txMint = await usdcMock.mint(ethUsdcSwap.target, usdcLiquidity);
   await txMint.wait();
   console.log("USDC liquidity minted to EthUsdcSwap");
@@ -119,9 +119,9 @@ async function main() {
   await txEth.wait();
   console.log(`ETH liquidity sent to EthUsdcSwap: ${ethLiquidity} ETH`);
 
-  // ------------------------
-  // 9) Copia ABI al frontend
-  // ------------------------
+
+
+
   const backendAbiPath = path.join(__dirname, "../artifacts/contracts");
   const frontendAbiPath = path.join(__dirname, "../../frontend/src/abi");
 
@@ -151,9 +151,9 @@ async function main() {
     }
   }
 
-  // ------------------------
-  // 10) Addresses payload per questa chain
-  // ------------------------
+
+
+
   const addressesForThisChain = {
     chainId,
     EthUsdFeed: ethUsdFeedAddress,
@@ -161,21 +161,21 @@ async function main() {
     SmartWallet: "deployed-per-wallet",
     MockToken: mockToken.target,
     PriceConsumerV3: priceConsumer.target,
-    OraclePrice: oracleAddress, // null su Sepolia
+    OraclePrice: oracleAddress,
     USDCMock: usdcMock.target,
     EthUsdcSwap: ethUsdcSwap.target,
   };
 
-  // 10a) Salva anche un file addresses.<chainId>.json (utile debug)
+
   const outPerChain = path.join(frontendAbiPath, `addresses.${chainId}.json`);
   fs.writeFileSync(outPerChain, JSON.stringify(addressesForThisChain, null, 2));
   console.log("Addresses written to:", outPerChain);
 
-  // 10b) Aggiorna addresses.json come mapping multi-chain (NON sovrascrivere tutto)
+
   const mappingPath = path.join(frontendAbiPath, "addresses.json");
   const existingMapping = readJsonSafe(mappingPath, {});
 
-  // Se il file era nel vecchio formato (contiene chainId “piatto”), lo resettiamo in mapping
+
   const isLegacyFlat =
     existingMapping &&
     typeof existingMapping === "object" &&

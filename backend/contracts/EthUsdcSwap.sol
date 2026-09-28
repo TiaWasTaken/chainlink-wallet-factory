@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -22,7 +22,7 @@ contract EthUsdcSwap is ReentrancyGuard {
         ethUsdFeed = AggregatorV3Interface(_ethUsdFeed);
     }
 
-    // --------- INTERNAL: prezzo ETH/USD normalizzato a 1e8 ---------
+
     function _getEthUsdPrice() internal view returns (uint256) {
         (, int256 answer,,,) = ethUsdFeed.latestRoundData();
         require(answer > 0, "Invalid price");
@@ -34,29 +34,29 @@ contract EthUsdcSwap is ReentrancyGuard {
         return uint256(answer) * (10 ** (8 - dec));
     }
 
-    /// ✅ View: prezzo ETH/USD normalizzato a 1e8 (per grafico)
+
     function getEthUsdPrice1e8() external view returns (uint256) {
         return _getEthUsdPrice();
     }
 
-    /// ✅ View: quote ETH->USDC (senza spostare fondi)
+
     function quoteBuyUsdc(uint256 ethAmountWei) public view returns (uint256 amountUsdc) {
         require(ethAmountWei > 0, "Zero ETH");
-        uint256 ethUsd = _getEthUsdPrice();               // 1 ETH in USD, 1e8
-        uint256 usdValue = (ethAmountWei * ethUsd) / 1e18; // USD, 1e8
+        uint256 ethUsd = _getEthUsdPrice();
+        uint256 usdValue = (ethAmountWei * ethUsd) / 1e18;
         amountUsdc = (usdValue * (10 ** USDC_DECIMALS)) / (10 ** 8);
     }
 
-    /// ✅ View: quote USDC->ETH (senza spostare fondi)
+
     function quoteSellUsdc(uint256 amountUsdc) public view returns (uint256 amountEth) {
         require(amountUsdc > 0, "Zero USDC");
-        uint256 ethUsd = _getEthUsdPrice(); // 1e8
+        uint256 ethUsd = _getEthUsdPrice();
 
-        uint256 usdValue = (amountUsdc * (10 ** 8)) / (10 ** USDC_DECIMALS); // USD, 1e8
-        amountEth = (usdValue * 1e18) / ethUsd; // ETH, 1e18
+        uint256 usdValue = (amountUsdc * (10 ** 8)) / (10 ** USDC_DECIMALS);
+        amountEth = (usdValue * 1e18) / ethUsd;
     }
 
-    // --------- BUY: ETH -> USDC ---------
+
     function buyUsdc(address recipient)
         external
         payable
@@ -77,7 +77,7 @@ contract EthUsdcSwap is ReentrancyGuard {
         emit BoughtUSDC(msg.sender, recipient, msg.value, amountUsdc);
     }
 
-    // --------- SELL: USDC -> ETH ---------
+
     function sellUsdc(address recipient, uint256 amountUsdc)
         external
         nonReentrant

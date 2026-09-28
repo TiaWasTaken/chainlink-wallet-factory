@@ -4,7 +4,7 @@ async function main() {
 
   const [owner, receiver] = await ethers.getSigners();
 
-  // Indirizzo della WalletFactory dal deploy
+
   const factoryAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
   const WalletFactory = await ethers.getContractFactory("WalletFactory");
   const factory = await WalletFactory.attach(factoryAddress);
@@ -12,11 +12,11 @@ async function main() {
   console.log("Deployer:", owner.address);
   console.log("Factory:", factoryAddress);
 
-  // Crea un nuovo wallet
+
   const tx = await factory.createWallet();
   const receipt = await tx.wait();
 
-  // Estrai l'evento correttamente da ethers v6
+
   const event = receipt.logs
     .map((log) => {
       try {
@@ -34,11 +34,11 @@ async function main() {
   const newWallet = event.args.wallet;
   console.log("Wallet creato:", newWallet);
 
-  // Attacca il contratto SmartWallet
+
   const SmartWallet = await ethers.getContractFactory("SmartWallet");
   const wallet = await SmartWallet.attach(newWallet);
 
-  // Invia 2 ETH al wallet
+
   console.log("\nInviando 2 ETH al wallet...");
   await owner.sendTransaction({
     to: newWallet,
@@ -48,7 +48,7 @@ async function main() {
   const balanceBefore = await ethers.provider.getBalance(newWallet);
   console.log("Saldo iniziale wallet:", ethers.formatEther(balanceBefore), "ETH");
 
-  // Trasferisci 0.5 ETH al receiver
+
   console.log("\nTrasferendo 0.5 ETH a:", receiver.address);
   await wallet.connect(owner).sendETH(receiver.address, ethers.parseEther("0.5"));
 
